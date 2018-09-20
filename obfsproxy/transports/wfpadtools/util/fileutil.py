@@ -34,11 +34,6 @@ def append_to_file(filepath, data):
     write_to_file(filepath, data, mode='a')
 
 
-def touch(fname, e=None):
-    with open(fname, 'a'):
-        utime(fname, times)
-
-
 def write_list_to_csv(l, csvpath, mode='wb'):
     with open(csvpath, mode) as f:
         wr = csv.writer(f, dialect='excel')

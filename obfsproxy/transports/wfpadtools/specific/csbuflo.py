@@ -26,8 +26,17 @@ class CSBuFLOTransport(WFPadTransport):
     """
     def __init__(self):
         super(CSBuFLOTransport, self).__init__()
+
+        # Defaults for BuFLO specifications.
+        self._initial_rho = const.INIT_RHO
+        self._period = const.INIT_RHO
+        self._length = const.MPU
+        self._padding_mode = const.TOTAL_PADDING
+        self._early_termination = False
+
         self._rho_stats = [[]]
         self._rho_star = self._initial_rho
+
         # Set constant length for messages
         self._lengthDataProbdist = histo.uniform(self._length)
 
@@ -70,13 +79,6 @@ class CSBuFLOTransport(WFPadTransport):
     @classmethod
     def validate_external_mode_cli(cls, args):
         """Assign the given command line arguments to local variables."""
-        # Defaults for BuFLO specifications.
-        cls._initial_rho = const.INIT_RHO
-        cls._period = const.INIT_RHO
-        cls._length = const.MPU
-        cls._padding_mode = const.TOTAL_PADDING
-        cls._early_termination = False
-
         super(CSBuFLOTransport, cls).validate_external_mode_cli(args)
 
         if args.period:

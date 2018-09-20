@@ -20,6 +20,12 @@ class TamarawTransport(WFPadTransport):
     """
     def __init__(self):
         super(TamarawTransport, self).__init__()
+
+        # Defaults for BuFLO specifications.
+        self._period = 10
+        self._length = const.MPU
+        self._batch = 20
+
         # Set constant length for messages
         self._lengthDataProbdist = histo.uniform(self._length)
 
@@ -50,11 +56,6 @@ class TamarawTransport(WFPadTransport):
     @classmethod
     def validate_external_mode_cli(cls, args):
         """Assign the given command line arguments to local variables."""
-        # Defaults for BuFLO specifications.
-        cls._period = 10
-        cls._length = const.MPU
-        cls._batch = 20
-
         super(TamarawTransport, cls).validate_external_mode_cli(args)
 
         if args.period:

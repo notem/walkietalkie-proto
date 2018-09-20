@@ -24,8 +24,13 @@ class AdaptiveTransport(WFPadTransport):
 
     def __init__(self):
         super(AdaptiveTransport, self).__init__()
+
+        # Defaults for Adaptive Padding specifications.
+        self._length = const.MPU
+
         # Set constant length for messages
         self._lengthDataProbdist = histo.uniform(self._length)
+
         # The stop condition in Adaptive:
         # Adaptive stops padding if the visit has finished and the
         # elapsed time has exceeded the minimum padding time.
@@ -56,9 +61,6 @@ class AdaptiveTransport(WFPadTransport):
     @classmethod
     def validate_external_mode_cli(cls, args):
         """Assign the given command line arguments to local variables."""
-        # Defaults for Adaptive Padding specifications.
-        cls._length = const.MPU
-
         super(AdaptiveTransport, cls).validate_external_mode_cli(args)
 
         if args.psize:
