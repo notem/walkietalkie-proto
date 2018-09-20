@@ -58,10 +58,10 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         self._msgExtractor = message.WFPadMessageExtractor()
 
         # Get the global shim object
+        self.shim_ports = None
         self._initializeShim()
 
         self._initializeState()
-
 
     def _initializeShim(self):
         self._shim = None
@@ -187,18 +187,22 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         # Change state to ST_CONNECTED
         self._state = const.ST_CONNECTED
         log.debug("[wfpad - %s] Connected with the other WFPad end.", self.end)
+
         # Once we are connected we can flush data accumulated in the buffer.
         if len(self._buffer) > 0:
             self.flushBuffer()
+
         # Get peer address
-        self.peer_addr = self.circuit.downstream.peer_addr
+        atype, paddr, pport = self.circuit.downstream.getRawBoundAddr()
+
         # Load sockets
         if "test" not in self.process.name():
-            self.connections = self.process.get_connections()
-            for pconn in self.connections:
-                if pconn.status == 'ESTABLISHED' and pconn.raddr[1] == self.peer_addr.port:
+            connections = self.process.connections()
+            for pconn in connections:
+                if pconn.status == psutil.CONN_ESTABLISHED and pconn.raddr[1] == pport:
                     self.downstreamSocket = socket.fromfd(pconn.fd, pconn.family, pconn.type)
                     break
+
 
     def receivedUpstream(self, data):
         """Got data from upstream; relay them downstream.
