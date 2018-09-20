@@ -389,7 +389,7 @@ def get_page(url, port, timeout, max_retries=1):
     elif max_retries > 1:
         session = requesocks.session(config={'max_retries': 10})
     else:
-        raise
+        raise Exception
     session.proxies = {'http': 'socks5://127.0.0.1:{}'.format(port),
                        'https': 'socks5://127.0.0.1:{}'.format(port)}
     return session.get(url, timeout=timeout)

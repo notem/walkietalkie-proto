@@ -193,13 +193,14 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
             self.flushBuffer()
 
         # Get peer address
-        atype, paddr, pport = self.circuit.downstream.getRawBoundAddr()
+        host = self.circuit.downstream.transport.getHost()
+        port = host.port
 
         # Load sockets
         if "test" not in self.process.name():
             connections = self.process.connections()
             for pconn in connections:
-                if pconn.status == psutil.CONN_ESTABLISHED and pconn.raddr[1] == pport:
+                if pconn.status == psutil.CONN_ESTABLISHED and pconn.raddr[1] == port:
                     self.downstreamSocket = socket.fromfd(pconn.fd, pconn.family, pconn.type)
                     break
 
