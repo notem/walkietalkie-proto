@@ -143,16 +143,16 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 	   001	        | Discard the message.
 	----------------+-----------------------------------------------------
 	   010          | Parse opcode, arguments and payload. Relay payload.
-	   		| Wait for more control messages.
+	   	            | Wait for more control messages.
 	----------------+-----------------------------------------------------
 	   011          | Parse opcode and arguments. Discard payload.
-	   		| Wait for more control messages.
+	   	            | Wait for more control messages.
 	----------------+-----------------------------------------------------
 	   110          | Parse opcode and arguments and payload. Do control
-	   		| operation and forward payload.
+	   	            | operation and forward payload.
 	----------------+-----------------------------------------------------
 	   111          | Parse opcode and arguments and do operation.
-	   		| Discard payload.  
+                    | Discard payload.
 	----------------+-----------------------------------------------------
 
 	WFPadTools MUST be used in combination with another pluggable transport that
@@ -177,10 +177,10 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 	   OP_APP_HINT	    | Signal the start/end of a session.
 	--------------------+-----------------------------------------------------
 	   OP_BURST_HISTO   | Specifies probability distributions for delays after
-	   		    | data in order to pad burst in traffic.
+	   		            | data in order to pad burst in traffic.
 	--------------------+-----------------------------------------------------
 	   OP_GAP_HISTO     | Specifies probability distributions for delays after
-	   		    | a dummy message in order to pad gaps in traffic.
+	   		            | a dummy message in order to pad gaps in traffic.
 	--------------------+-----------------------------------------------------
 	   OP_TOTAL_PAD     | Parse opcode and arguments and do operation.
 	--------------------+-----------------------------------------------------
@@ -212,7 +212,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 	be used in the server as depicted below:
 		
 		    Client                         Server   Legend:
-                     |       (Bs, Gs, Br, Gr)       |      Bs: Burst send probability distribution
+              |       (Bs, Gs, Br, Gr)       |      Bs: Burst send probability distribution
 		      | ---------------------------> |      Gs: Gap send probability distribution 
 		      |         SessId, start        |      Br: Burst receive probability distribution
 		      | ---------------------------> |      Gr: Burst receive probability distribution 

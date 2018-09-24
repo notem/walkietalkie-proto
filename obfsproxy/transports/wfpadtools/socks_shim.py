@@ -161,7 +161,6 @@ class SocksShim(object):
         
     def listen(self):
         self._ep = TCP4ServerEndpoint(reactor, self._port, interface='127.0.0.1')
-        d = None
         if self._socks_port == -1:
             d = self._ep.listen(_ShimTestFactory(self))
         else:

@@ -5,7 +5,6 @@ from time import sleep
 
 # WFPadTools imports
 from os.path import join
-from obfsproxy.test import tester
 import obfsproxy.common.log as logging
 from obfsproxy.test import tester as ts
 from obfsproxy.transports.wfpadtools import const
@@ -226,8 +225,8 @@ class SetUpTest(nu.CommInterfaceAbstract):
     shim) and dummy endpoints. The tearDown method closes communication
     and still-alive processes.
     """
-    ENTRY_PORT = tester.ENTRY_PORT
-    EXIT_PORT = tester.EXIT_PORT
+    ENTRY_PORT = ts.ENTRY_PORT
+    EXIT_PORT = ts.EXIT_PORT
     SHIM_PORTS = [SHIM_PORT, SOCKS_PORT]
 
     def setUp(self):

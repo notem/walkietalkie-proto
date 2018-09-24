@@ -57,7 +57,7 @@ class HTTPConnectClient(HTTPClient):
 
     def connectionLost(self, reason):
         if self.instance:
-            self.instance.connectionLost(reason)
+            self.instance.connectionLost()
         else:
             # Some HTTP proxies (Eg: polipo) are rude and opt to close the
             # connection instead of sending a status code indicating failure.
