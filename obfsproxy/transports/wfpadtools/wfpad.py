@@ -58,6 +58,7 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         self._msgExtractor = message.WFPadMessageExtractor()
 
         # Get the global shim object
+        self.shim_ports = (6665, 6666) if not hasattr(self, 'shim_ports') else self.shim_ports
         self._initializeShim()
 
         self._initializeState()
@@ -157,7 +158,7 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         cls.dest = args.dest if args.dest else None
 
         # By default, shim doesn't connect to socks
-        cls.shim_ports = (6665, 6666)
+        cls.shim_ports = None
         if args.shim:
             cls.shim_ports = map(int, args.shim.split(','))
             log.debug("[wfpad] Shim ports: %s", cls.shim_ports)
