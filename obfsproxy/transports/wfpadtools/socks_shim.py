@@ -81,6 +81,7 @@ class _ShimServerProtocol(Protocol):
         self._buf = Buffer()
 
     def connectionMade(self):
+        log.warning('[shim]: making client connection')
         ep = TCP4ClientEndpoint(reactor, '127.0.0.1', self._socks_port)
         f = _ShimClientFactory(self._shim, self)
         d = ep.connect(f)

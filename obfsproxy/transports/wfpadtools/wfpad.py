@@ -70,6 +70,7 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
             self._sessionObserver = False
             # create the socks_shim if not already created
             if not socks_shim.get():
+                log.debug("[shim] creating new socks-shim layer.")
                 if self.shim_ports:
                     socks_shim.new(*self.shim_ports)
                 else:
@@ -78,8 +79,7 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
             self._shim = socks_shim.get()
             self._sessionObserver = wfpad_shim.WFPadShimObserver(self)
             self._shim.registerObserver(self._sessionObserver)
-            if self.shim_ports:
-                self._shim.listen()
+            self._shim.listen()
         else:
             self._sessId = const.DEFAULT_SESSION
             self._visiting = False
