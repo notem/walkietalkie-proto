@@ -54,8 +54,6 @@ class _ShimClientProtocol(Protocol):
 
 
 class _ShimClientFactory(Factory):
-    noisy = False
-    
     _shim = None
     _server = None
 

@@ -34,11 +34,13 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
     different existing website fingerprinting countermeasures, and
     that can also be used to generate new ones.
     """
+    shim_ports = None
+    circuit = None
+    _shim = None
 
     def __init__(self):
         """Initialize a WFPadTransport object."""
         # Initialize circuit
-        self.circuit = None
         self.name = "wfpad_transport_%s" % hex(id(self))
 
         # which end are we?
@@ -58,22 +60,21 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         self._msgExtractor = message.WFPadMessageExtractor()
 
         # Get the global shim object
-        self.shim_ports = (6665, 6666) if not hasattr(self, 'shim_ports') else self.shim_ports
         self._initializeShim()
 
         self._initializeState()
 
     def _initializeShim(self):
-        self._shim = None
+        # only the client PT can use a socks_shim
         if self.weAreClient:
             self._sessionObserver = False
-
+            # create the socks_shim if not already created
             if not socks_shim.get():
                 if self.shim_ports:
                     socks_shim.new(*self.shim_ports)
                 else:
-                    socks_shim.new(const.SHIM_PORT, -1)
-
+                    socks_shim.new(const.SHIM_PORT, const.SOCKS_PORT)
+            # register the WFPad session observer
             self._shim = socks_shim.get()
             self._sessionObserver = wfpad_shim.WFPadShimObserver(self)
             self._shim.registerObserver(self._sessionObserver)
@@ -158,7 +159,6 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         cls.dest = args.dest if args.dest else None
 
         # By default, shim doesn't connect to socks
-        cls.shim_ports = None
         if args.shim:
             cls.shim_ports = map(int, args.shim.split(','))
             log.debug("[wfpad] Shim ports: %s", cls.shim_ports)
@@ -166,7 +166,7 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
     @classmethod
     def setup(cls, transportConfig):
         """Called once when obfsproxy starts."""
-        if cls.__name__ is "WFPadTransport":
+        if cls.__name__ in {"WFPadTransport", "WFPadClient", "WFPadServer"}:
             log.info("\n\n"
                      "####################################################\n"
                      " WFPad alone isn't a Website Fingerprinting defense \n"
