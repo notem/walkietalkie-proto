@@ -38,6 +38,7 @@ class _ShimClientProtocol(Protocol):
     _id = None
     _shim = None
     _server = None
+    _parser = HttpParser()
 
     def __init__(self, factory, shim, server):
         self._shim = shim
@@ -56,6 +57,23 @@ class _ShimClientProtocol(Protocol):
 
     def writeToSocksPort(self, data):
         if data:
+            # check if packet is a request with a URI
+            try:
+                nparsed = self._parser.execute(data, len(data))
+                if nparsed != len(data):
+                    raise Exception
+                if self._parser.is_message_complete():
+                    log.debug("[shim-server] {url} {path} {query} {method}"
+                              .format(url=self._parser.get_url(),
+                                      path=self._parser.get_path(),
+                                      query=self._parser.get_query_string(),
+                                      method=self._parser.get_method()))
+                    self._shim.notifyURI(self._id,
+                                         "".join([self._parser.get_url(), self._parser.get_path()]))
+            except Exception:
+                self._parser = HttpParser()
+
+            # write out to socks
             self.transport.write(data)
 
 
@@ -77,7 +95,6 @@ class _ShimServerProtocol(Protocol):
     _buf = None
     _client = None
     _factory = None
-    _parser = HttpParser()
 
     connector = None
 
@@ -104,16 +121,6 @@ class _ShimServerProtocol(Protocol):
 
     def dataReceived(self, data):
         if self._client:
-            try:
-                nparsed = self._parser.execute(data, len(data))
-                if nparsed != len(data):
-                    raise Exception
-                if self._parser.is_message_complete():
-                    log.debug("[shim-server] {url} {path}".format(url=self._parser.get_url(),
-                                                                  path=self._parser.get_path()))
-                    self._shim.notifyURI("".join([self._parser.get_url(), self._parser.get_path()]))
-            except Exception:
-                self._parser = HttpParser()
             self._client.writeToSocksPort(data)
         else:
             self._buf.write(data)
@@ -162,7 +169,7 @@ class SocksShim(object):
     _id = None
     _port = None
     _socks_port = None
-    
+
     _observers = None
     session_observer = None
 
@@ -223,10 +230,10 @@ class SocksShim(object):
     def isRegistered(self, observer):
         return observer in self._observers
 
-    def notifyURI(self):
-        log.debug('[shim]: notifyURI: id=%d', self._id)
+    def notifyURI(self, conn_id, uri):
+        log.debug('[shim]: notifyURI: id=%d', conn_id)
         for o in self._observers:
-            o.onURI(self._id)
+            o.onURI(self._id, conn_id, uri)
 
     def notifyConnect(self):
         self._id += 1
