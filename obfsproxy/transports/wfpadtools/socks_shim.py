@@ -228,11 +228,11 @@ class SocksShim(object):
         for o in self._observers:
             o.onURI(self._id)
 
-    def notifyConnect(self, uri):
+    def notifyConnect(self):
         self._id += 1
         log.debug('[shim]: notifyConnect: id=%d', self._id)
         for o in self._observers:
-            o.onConnect(self._id, uri)
+            o.onConnect(self._id)
         return self._id
 
     def notifyDisconnect(self, conn_id):

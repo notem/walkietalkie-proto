@@ -38,7 +38,8 @@ setup(
         #'numpy'
         #'scipy',
         'pyyaml',
-        'psutil'
+        'psutil',
+        'http-parser'
         ],
 
     extras_require = {
