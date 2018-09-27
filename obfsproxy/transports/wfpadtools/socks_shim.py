@@ -21,6 +21,12 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ClientEndpoint, TCP4ServerEndpoint
 
+# try to import C parser then fallback in pure python parser.
+try:
+    from http_parser.parser import HttpParser
+except ImportError:
+    from http_parser.pyparser import HttpParser
+
 # WFPadTools imports
 from obfsproxy.network.buffer import Buffer
 import obfsproxy.common.log as logging
@@ -71,6 +77,7 @@ class _ShimServerProtocol(Protocol):
     _buf = None
     _client = None
     _factory = None
+    _parser = HttpParser()
 
     connector = None
 
@@ -97,6 +104,16 @@ class _ShimServerProtocol(Protocol):
 
     def dataReceived(self, data):
         if self._client:
+            try:
+                nparsed = self._parser.execute(data, len(data))
+                if nparsed != len(data):
+                    raise Exception
+                if self._parser.is_message_complete():
+                    log.debug("[shim-server] {url} {path}".format(url=self._parser.get_url(),
+                                                                  path=self._parser.get_path()))
+                    self._shim.notifyURI("".join([self._parser.get_url(), self._parser.get_path()]))
+            except Exception:
+                self._parser = HttpParser()
             self._client.writeToSocksPort(data)
         else:
             self._buf.write(data)
@@ -206,11 +223,16 @@ class SocksShim(object):
     def isRegistered(self, observer):
         return observer in self._observers
 
-    def notifyConnect(self):
+    def notifyURI(self):
+        log.debug('[shim]: notifyURI: id=%d', self._id)
+        for o in self._observers:
+            o.onURI(self._id)
+
+    def notifyConnect(self, uri):
         self._id += 1
         log.debug('[shim]: notifyConnect: id=%d', self._id)
         for o in self._observers:
-            o.onConnect(self._id)
+            o.onConnect(self._id, uri)
         return self._id
 
     def notifyDisconnect(self, conn_id):

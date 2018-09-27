@@ -63,6 +63,9 @@ class WFPadShimObserver(object):
         self._visiting = False
         self._wfpad.onSessionEnds(self._sessId)
 
+    def onURI(self, sessId, uri):
+        log.debug("[wfpad - shim obs] Saw {uri} in session {ses}".format(uri=uri, ses=sessId))
+
     def getSessId(self):
         """Return a hash of the current session id.
 
