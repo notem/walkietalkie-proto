@@ -21,17 +21,32 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ClientEndpoint, TCP4ServerEndpoint
 
-# try to import C parser then fallback in pure python parser.
-try:
-    from http_parser.parser import HttpParser
-except ImportError:
-    from http_parser.pyparser import HttpParser
-
 # WFPadTools imports
 from obfsproxy.network.buffer import Buffer
 import obfsproxy.common.log as logging
 
 log = logging.get_obfslogger()
+
+import urllib3
+from io import BytesIO
+from httplib import HTTPResponse
+
+
+class BytesIOSocket:
+    def __init__(self, content):
+        self.handle = BytesIO(content)
+
+    def makefile(self, mode):
+        return self.handle
+
+
+def response_from_bytes(data):
+    sock = BytesIOSocket(data)
+
+    response = HTTPResponse(sock)
+    response.begin()
+
+    return urllib3.HTTPResponse.from_httplib(response)
 
 
 class _ShimClientProtocol(Protocol):
@@ -56,20 +71,12 @@ class _ShimClientProtocol(Protocol):
 
     def writeToSocksPort(self, data):
         if data:
-            parser = HttpParser()
             # check if packet is a request with a URI
             try:
-                nparsed = parser.execute(data, len(data))
-                if nparsed != len(data):
-                    raise Exception
-                log.debug("[shim-server] headers {headers}".format(headers=parser.get_headers()))
-                log.debug("[shim-server] {url} {path} {query} {method}"
-                          .format(url=parser.get_url(),
-                                  path=parser.get_path(),
-                                  query=parser.get_query_string(),
-                                  method=parser.get_method()))
-                self._shim.notifyURI(self._id,
-                                     "".join([parser.get_headers().get('host'), parser.get_path()]))
+                response = response_from_bytes(data)
+                log.debug("[shim-server] headers {headers}".format(headers=response.headers))
+                log.debug("[shim-server] data {data}"
+                          .format(data=response.data))
             except Exception:
                 pass
 
