@@ -62,14 +62,14 @@ class _ShimClientProtocol(Protocol):
                 nparsed = parser.execute(data, len(data))
                 if nparsed != len(data):
                     raise Exception
-                log.debug("[shim-server] headers {headers}".format(headers=self._parser.get_headers()))
+                log.debug("[shim-server] headers {headers}".format(headers=parser.get_headers()))
                 log.debug("[shim-server] {url} {path} {query} {method}"
-                          .format(url=self._parser.get_url(),
-                                  path=self._parser.get_path(),
-                                  query=self._parser.get_query_string(),
-                                  method=self._parser.get_method()))
+                          .format(url=parser.get_url(),
+                                  path=parser.get_path(),
+                                  query=parser.get_query_string(),
+                                  method=parser.get_method()))
                 self._shim.notifyURI(self._id,
-                                     "".join([self._parser.get_headers().get('host'), self._parser.get_path()]))
+                                     "".join([parser.get_headers().get('host'), parser.get_path()]))
             except Exception:
                 pass
 
@@ -233,7 +233,7 @@ class SocksShim(object):
     def notifyURI(self, conn_id, uri):
         log.debug('[shim]: notifyURI: id=%d', conn_id)
         for o in self._observers:
-            o.onURI(self._id, conn_id, uri)
+            o.onURI(conn_id, uri)
 
     def notifyConnect(self):
         self._id += 1
