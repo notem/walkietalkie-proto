@@ -27,26 +27,19 @@ import obfsproxy.common.log as logging
 
 log = logging.get_obfslogger()
 
-import urllib3
-from io import BytesIO
-from httplib import HTTPResponse
+import re
 
 
-class BytesIOSocket:
-    def __init__(self, content):
-        self.handle = BytesIO(content)
-
-    def makefile(self, mode):
-        return self.handle
-
-
-def response_from_bytes(data):
-    sock = BytesIOSocket(data)
-
-    response = HTTPResponse(sock)
-    response.begin()
-
-    return urllib3.HTTPResponse.from_httplib(response)
+def get_http_headers(data):
+    try:
+        http_header = data[data.index(b"HTTP/1.1"):data.index(b"\r\n\r\n") + 2]
+        if http_header:
+            http_header_raw = data[:data.index(b"\r\n\r\n") + 2]
+            http_header_parsed = dict(re.findall(r"(?P<name>.*?): (?P<value>.*?)\r\n", http_header_raw.decode("utf8")))
+            return http_header_parsed
+        return None
+    except:
+        return None
 
 
 class _ShimClientProtocol(Protocol):
@@ -71,14 +64,11 @@ class _ShimClientProtocol(Protocol):
 
     def writeToSocksPort(self, data):
         if data:
+
             # check if packet is a request with a URI
-            try:
-                response = response_from_bytes(data)
-                log.debug("[shim-server] headers {headers}".format(headers=response.headers))
-                log.debug("[shim-server] data {data}"
-                          .format(data=response.data))
-            except Exception:
-                pass
+            headers = get_http_headers(data)
+            if headers:
+                log.debug("[shim-server] headers {headers}".format(headers=headers))
 
             # write out to socks
             self.transport.write(data)
