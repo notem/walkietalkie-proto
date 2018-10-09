@@ -27,20 +27,6 @@ import obfsproxy.common.log as logging
 
 log = logging.get_obfslogger()
 
-import re
-
-
-def get_http_headers(data):
-    try:
-        http_header = data[data.index(b"HTTP/1.1"):data.index(b"\r\n\r\n") + 2]
-        if http_header:
-            http_header_raw = data[:data.index(b"\r\n\r\n") + 2]
-            http_header_parsed = dict(re.findall(r"(?P<name>.*?): (?P<value>.*?)\r\n", http_header_raw.decode("utf8")))
-            return http_header_parsed
-        return None
-    except:
-        return None
-
 
 class _ShimClientProtocol(Protocol):
     _id = None
@@ -64,12 +50,6 @@ class _ShimClientProtocol(Protocol):
 
     def writeToSocksPort(self, data):
         if data:
-
-            # check if packet is a request with a URI
-            headers = get_http_headers(data)
-            if headers:
-                log.debug("[shim-server] headers {headers}".format(headers=headers))
-
             # write out to socks
             self.transport.write(data)
 
@@ -226,11 +206,6 @@ class SocksShim(object):
 
     def isRegistered(self, observer):
         return observer in self._observers
-
-    def notifyURI(self, conn_id, uri):
-        log.debug('[shim]: notifyURI: id=%d', conn_id)
-        for o in self._observers:
-            o.onURI(conn_id, uri)
 
     def notifyConnect(self):
         self._id += 1

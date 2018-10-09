@@ -200,6 +200,8 @@ def getOpcodeNames(opcode):
         return "RELAY PAYLOAD_PAD"
     elif opcode == const.OP_BATCH_PAD:
         return "RELAY BATCH_PAD"
+    elif opcode == const.OP_WT_PAGEID:
+        return "RELAY WT_PAGE_ID"
     else:
         return "Undefined"
 
@@ -243,7 +245,8 @@ def isOpCodeSane(opcode):
         const.OP_INJECT_HISTO,
         const.OP_PAYLOAD_PAD,
         const.OP_SEND_PADDING,
-        const.OP_TOTAL_PAD
+        const.OP_TOTAL_PAD,
+        const.OP_WT_PAGEID
     ]
     return (opcode in validOpCodes)
 

@@ -37,9 +37,6 @@ setup(
         'pyptlib >= 0.0.6',
         #'numpy'
         #'scipy',
-        'pyyaml',
-        'psutil',
-        'http-parser'
         ],
 
     extras_require = {

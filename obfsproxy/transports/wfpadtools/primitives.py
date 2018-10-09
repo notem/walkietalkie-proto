@@ -5,9 +5,10 @@ from obfsproxy.transports.wfpadtools import const
 from obfsproxy.transports.wfpadtools import message as mes
 from obfsproxy.transports.wfpadtools.util.mathutil import closest_power_of_two, \
     closest_multiple
+from obfsproxy.transports.wfpadtools.specific.walkietalkie import WalkieTalkieTransport, \
+    WalkieTalkieClient, WalkieTalkieServer
 
 import obfsproxy.common.log as logging
-
 
 log = logging.get_obfslogger()
 
@@ -18,6 +19,7 @@ class PaddingPrimitivesInterface(object):
     See:
         https://gitweb.torproject.org/user/mikeperry/torspec.git/blob/refs/heads/multihop-padding-primitives:/proposals/ideas/xxx-multihop-padding-primitives.txt
     """
+
     def receiveControlMessage(self, opcode, args=None):
         """Do operation indicated by the _opcode."""
         log.debug("[wfpad - %s] Received control message with opcode %s and args: %s",
@@ -45,6 +47,10 @@ class PaddingPrimitivesInterface(object):
             # Tamaraw primitives
             elif opcode == const.OP_BATCH_PAD:
                 self.relayBatchPad(*args)
+
+            # Walkie-Talkie primitives
+            elif opcode == const.OP_WT_PAGEID:
+                self.relayPageID(*args)
             else:
                 Exception("Client cannot receive control messages with opcode %s." % opcode)
 
@@ -133,7 +139,6 @@ class PaddingPrimitivesInterface(object):
                                                   removeTokens=bool(removeTokens))
         self._deferBurstCallback[when] = self._burstHistoProbdist[when].removeToken
 
-
     def relayGapHistogram(self, histo, removeTokens=False, interpolate=True,
                           when="rcv", decay_by=0):
         """Specify histogram that encodes the delay distribution
@@ -178,7 +183,6 @@ class PaddingPrimitivesInterface(object):
                                                 removeTokens=bool(removeTokens),
                                                 decay_by=decay_by)
         self._deferGapCallback[when] = self._gapHistoProbdist[when].removeToken
-
 
     def relayTotalPad(self, sessId, t, msg_level=True):
         """Pad all batches to nearest 2^K cells total.
@@ -225,7 +229,6 @@ class PaddingPrimitivesInterface(object):
         self.calculateTotalPadding = stopConditionTotalPadding
         return self.session.stop_padding
 
-
     def relayPayloadPad(self, sessId, t, msg_level=True):
         """Pad until the total sent data is multiple of 2^int(log(TOTAL_PAYLOAD))
 
@@ -264,13 +267,13 @@ class PaddingPrimitivesInterface(object):
             stopCond = to_pad > 0 and to_pad >= self.session.totalPadding
             log.debug("[wfpad %s] - Payload pad stop condition is %s."
                       "\n Visiting: %s, Total padding: %s, Num msgs: %s, Total Bytes: %s"
-                      % (self.end, stopCond, self.isVisiting(), self.session.totalPadding, self.session.numMessages, self.session.totalBytes))
+                      % (self.end, stopCond, self.isVisiting(), self.session.totalPadding, self.session.numMessages,
+                         self.session.totalBytes))
             return stopCond
 
         self.stopCondition = stopConditionPayloadPad
         self.calculateTotalPadding = stopConditionPayloadPadding
         return self.session.stop_padding
-
 
     def relayBatchPad(self, sessId, L, t, msg_level=True):
         """Pad all batches of cells to the nearest multiple of `L` cells/bytes total.
@@ -309,9 +312,20 @@ class PaddingPrimitivesInterface(object):
             stopCond = to_pad > 0 and to_pad >= self.session.totalPadding
             log.debug("[wfpad %s] - Batch pad stop condition is %s."
                       "\n Visiting: %s, Total padding: %s, Num msgs: %s, Total Bytes: %s, L: %s"
-                      % (self.end, stopCond, self.isVisiting(), self.session.totalPadding, self.session.numMessages, self.session.totalBytes, L))
+                      % (self.end, stopCond, self.isVisiting(), self.session.totalPadding, self.session.numMessages,
+                         self.session.totalBytes, L))
             return stopCond
 
         self.stopCondition = stopConditionBatchPad
         self.calculateTotalPadding = stopConditionBatchPadding
         return self.session.stop_padding
+
+    def relayPageID(self, page_id):
+        """
+        :param page_id:
+        :return:
+        """
+        if self.__class__ is WalkieTalkieTransport or \
+                self.__class__ is WalkieTalkieClient or \
+                self.__class__ is WalkieTalkieServer:
+            self.receiveSessionPageId(page_id)

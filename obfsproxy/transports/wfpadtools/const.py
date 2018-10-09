@@ -16,6 +16,9 @@ TEST_DIR                = jn(OBFSPROXY_DIR, "test")
 ETC_DIR                 = jn(TEST_DIR, "transports", "wfpadtools", "etc")
 DEFAULT_LOG             = "wfpad.log"
 TEST_DUMP_DIR           = jn(TEMP_DIR, "test_dumps")
+WT_BASE_DIR             = jn(BASE_DIR, "walkie_talkie")
+WT_BURST_DIR            = jn(WT_BASE_DIR, "bursts")
+WT_DECOY_DIR            = jn(WT_BASE_DIR, "decoys")
 CLIENT                  = "client"
 SERVER                  = "server"
 DUMPS                   = {CLIENT: join(TEST_DUMP_DIR, "client.dump"),
@@ -51,6 +54,8 @@ OP_INJECT_HISTO         = 6
 OP_TOTAL_PAD            = 7
 OP_PAYLOAD_PAD          = 8
 OP_BATCH_PAD            = 9
+OP_WT_PAGEID            = 10
+
 
 # WFPad message structure fields's constants
 TOTLENGTH_POS           = 0
@@ -94,6 +99,8 @@ MAX_RHO                 = 10000
 # Default shim ports
 SHIM_PORT               = 4997
 SOCKS_PORT              = 4998
+
+WT_PORT                 = 4996
 
 DEFAULT_SESSION         = 0
 MAX_LAST_DATA_TIME      = 100
