@@ -93,6 +93,7 @@ class WalkieTalkieTransport(WFPadTransport):
 
     def _initializeState(self):
         self._burst_count = 0
+        self._pad_count = 0
         if self.weAreClient:    # client begins in Talkie mode
             self._talkie = True
         else:                   # bridge begins in Walkie mode
@@ -151,6 +152,7 @@ class WalkieTalkieTransport(WFPadTransport):
         dont consider padding messages when mode switching"""
         if not self._talkie and self._check_padding(data):
             self._burst_count += 1
+            self._pad_count = 0
             self._talkie = True
 
     def whenReceivedDownstream(self, data):
@@ -158,7 +160,18 @@ class WalkieTalkieTransport(WFPadTransport):
         dont consider padding messages when mode switching"""
         if self._talkie and self._check_padding(data):
             self._burst_count += 1
+            self._pad_count = 0
             self._talkie = False
+
+    def sendIgnore(self, paddingLength=None):
+        """Overwrite sendIgnore (sendPadding) function so
+        as to control when and how many padding messages are sent"""
+        if self._talkie:    # only send padding when in Talkie mode
+            pad_pair = self._pad_seq[self._burst_count//2] if len(self._pad_seq) else (0, 0)
+            pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
+            if self._pad_count < pad_target:
+                WFPadTransport.sendIgnore(self, paddingLength)
+                self._pad_count += 1
 
 
 class WalkieTalkieClient(WalkieTalkieTransport):
@@ -178,7 +191,9 @@ class WalkieTalkieServer(WalkieTalkieTransport):
 
 
 class WalkieTalkieListener(object):
-    """
+    """The walkie-talkie listener listens for incoming connection from the tor crawler/browser
+    The crawler/browser should send the url/webpage identifier to this listener when beginning a browsing session
+    This allows the proxy to identify what decoy should be used for mold-padding
     """
     class _ServerProtocol(Protocol):
         """
