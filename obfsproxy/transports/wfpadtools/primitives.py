@@ -5,8 +5,6 @@ from obfsproxy.transports.wfpadtools import const
 from obfsproxy.transports.wfpadtools import message as mes
 from obfsproxy.transports.wfpadtools.util.mathutil import closest_power_of_two, \
     closest_multiple
-from obfsproxy.transports.wfpadtools.specific.walkietalkie import WalkieTalkieTransport, \
-    WalkieTalkieClient, WalkieTalkieServer
 
 import obfsproxy.common.log as logging
 
@@ -325,7 +323,4 @@ class PaddingPrimitivesInterface(object):
         :param page_id:
         :return:
         """
-        if self.__class__ is WalkieTalkieTransport or \
-                self.__class__ is WalkieTalkieClient or \
-                self.__class__ is WalkieTalkieServer:
-            self.receiveSessionPageId(page_id)
+        self.receiveSessionPageId(page_id)
