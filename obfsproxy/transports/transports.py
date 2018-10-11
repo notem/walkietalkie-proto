@@ -24,8 +24,8 @@ transports = {'dummy': {'base': dummy.DummyTransport, 'client': dummy.DummyClien
               'bwdiff': {'base': bwdiff.BWDiffTransport, 'client': bwdiff.BWDiffClient, 'server': bwdiff.BWDiffServer},
               'adaptive': {'base': adaptive.AdaptiveTransport, 'client': adaptive.AdaptiveClient,
                            'server': adaptive.AdaptiveServer},
-              'walkie-talkie': {'base': walkietalkie.WalkieTalkieTransport, 'client': walkietalkie.WalkieTalkieClient,
-                                'server': walkietalkie.WalkieTalkieServer}}
+              'walkietalkie': {'base': walkietalkie.WalkieTalkieTransport, 'client': walkietalkie.WalkieTalkieClient,
+                               'server': walkietalkie.WalkieTalkieServer}}
 
 
 def get_transport_class(name, role):
