@@ -215,7 +215,7 @@ class WalkieTalkieListener(object):
             log.warning('[wt-listener]: making connection with crawler')
 
         def connectionLost(self, reason):
-            log.warning('[wt-listener]: lost connection to crawler')
+            log.warning('[wt-listener]: connection to crawler closed: %s', reason.message)
 
         def dataReceived(self, data):
             if data:
@@ -231,7 +231,7 @@ class WalkieTalkieListener(object):
             self._listener = listener
 
         def buildProtocol(self, addr):
-            return self._listener._ServerProtocol(self, self._listener)
+            return self._listener._ServerProtocol(self, self._listener._transport)
 
     def __init__(self, port, transport):
         self._transport = transport
