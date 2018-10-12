@@ -238,8 +238,11 @@ class WalkieTalkieListener(object):
         self._crawler = None
 
     def listen(self):
-        d = self._ep.listen(self._ServerFactory)
-        d.addCallback(lambda a: self.setCrawler(a))
+        try:
+            d = self._ep.listen(self._ServerFactory)
+            d.addCallback(lambda a: self.setCrawler(a))
+        except Exception, e:
+            log.exception("[walkie-talkie - %s] Error when listening on port %d:", self._transport.end, self._port, e)
 
     def setCrawler(self, obj):
         self._crawler = obj
