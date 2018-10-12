@@ -89,6 +89,7 @@ class WalkieTalkieTransport(WFPadTransport):
 
     def _initializeWTListener(self):
         if self.weAreClient:
+            log.warn("[walkie-talkie - %s] starting WT listener on port %d", self.end, self._port)
             self._listener = WalkieTalkieListener(self._port, self)
 
     def _initializeWTState(self):
