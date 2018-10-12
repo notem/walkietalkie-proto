@@ -128,6 +128,8 @@ class WalkieTalkieTransport(WFPadTransport):
         if os.path.exists(fname):
             with open(fname) as fi:
                 seq = pickle.load(fi)
+        else:
+            log.info('[walkie-talkie - %s] unable to load sequence for %s', self.end, id)
         return seq
 
     def _is_padding(self, data):
@@ -155,6 +157,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self._burst_count += 1
             self._pad_count = 0
             self._talkie = True
+            log.info('[walkie-talkie - %s] switching to Talkie mode', self.end)
 
     def whenReceivedDownstream(self, data):
         """Switch to walkie mode if incoming packet is first in a new burst
@@ -163,6 +166,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self._burst_count += 1
             self._pad_count = 0
             self._talkie = False
+            log.info('[walkie-talkie - %s] switching to Walkie mode', self.end)
 
     def sendIgnore(self, paddingLength=None):
         """Overwrite sendIgnore (sendPadding) function so
