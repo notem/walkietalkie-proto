@@ -84,8 +84,8 @@ class WalkieTalkieTransport(WFPadTransport):
         if args.bursts:
             cls._burst_directory = args.bursts
 
-    def onSessionStarts(self, sessId):
-        WFPadTransport.onSessionStarts(self, sessId)
+    #def onSessionStarts(self, sessId):
+    #    WFPadTransport.onSessionStarts(self, sessId)
 
     def _initializeWTListener(self):
         if self.weAreClient:
@@ -108,6 +108,7 @@ class WalkieTalkieTransport(WFPadTransport):
         self._setPadSequence(id)
         # if we are the client, relay the session page information to the bridge's PT
         if self.weAreClient:
+            log.debug("[walkie-talkie - %s] relaying session url to bridge", self.end)
             self.sendControlMessage(const.OP_WT_PAGEID, [id])
 
     def _setPadSequence(self, id):
@@ -132,7 +133,7 @@ class WalkieTalkieTransport(WFPadTransport):
             with open(fname) as fi:
                 seq = pickle.load(fi)
         else:
-            log.info('[walkie-talkie - %s] unable to load sequence for %s', self.end, id)
+            log.info('[walkie-talkie - %s] unable to load sequence for %s from %s', self.end, id, directory)
         return seq
 
     def _is_padding(self, data):
