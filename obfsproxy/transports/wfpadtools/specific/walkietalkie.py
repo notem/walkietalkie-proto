@@ -168,11 +168,13 @@ class WalkieTalkieTransport(WFPadTransport):
         """Overwrite sendIgnore (sendPadding) function so
         as to control when and how many padding messages are sent"""
         if self._talkie:    # only send padding when in Talkie mode
-            pad_pair = self._pad_seq[self._burst_count//2] if len(self._pad_seq) else (0, 0)
+            burst_pair_no = self._burst_count//2
+            pad_pair = self._pad_seq[burst_pair_no] if burst_pair_no < len(self._pad_seq) else (0, 0)
             pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
             if self._pad_count < pad_target:
                 WFPadTransport.sendIgnore(self, paddingLength)
                 self._pad_count += 1
+                log.debug("[walkie-talkie] sent burst padding. count = %d", self._pad_count)
 
 
 class WalkieTalkieClient(WalkieTalkieTransport):
