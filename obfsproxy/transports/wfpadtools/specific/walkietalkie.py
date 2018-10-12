@@ -231,7 +231,7 @@ class WalkieTalkieListener(object):
             self._listener = listener
 
         def buildProtocol(self, addr):
-            return self._ServerProtocol(self, self._listener)
+            return self._listener._ServerProtocol(self, self._listener)
 
     def __init__(self, port, transport):
         self._transport = transport
