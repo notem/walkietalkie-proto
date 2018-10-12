@@ -225,11 +225,13 @@ class WalkieTalkieListener(object):
     class _ServerFactory(Factory):
         """
         """
-        def __init__(self):
-            pass
+        _listener = None
+
+        def __init__(self, listener):
+            self._listener = listener
 
         def buildProtocol(self, addr):
-            return self._ServerProtocol(self)
+            return self._ServerProtocol(self, self._listener)
 
     def __init__(self, port, transport):
         self._transport = transport
@@ -239,7 +241,7 @@ class WalkieTalkieListener(object):
 
     def listen(self):
         try:
-            d = self._ep.listen(self._ServerFactory)
+            d = self._ep.listen(self._ServerFactory(self))
             d.addCallback(lambda a: self.setCrawler(a))
         except Exception, e:
             log.exception("[walkie-talkie - %s] Error when listening on port %d:", self._transport.end, self._port, e)
