@@ -153,7 +153,7 @@ class WalkieTalkieTransport(WFPadTransport):
     def whenReceivedUpstream(self, data):
         """Switch to talkie mode if outgoing packet is first in a new burst
         dont consider padding messages when mode switching"""
-        if not self._talkie and not self._is_padding(data):
+        if not self._talkie:
             self._burst_count += 1
             self._pad_count = 0
             self._talkie = True
@@ -162,7 +162,7 @@ class WalkieTalkieTransport(WFPadTransport):
     def whenReceivedDownstream(self, data):
         """Switch to walkie mode if incoming packet is first in a new burst
         dont consider padding messages when mode switching"""
-        if self._talkie and not self._is_padding(data):
+        if self._talkie:
             self._burst_count += 1
             self._pad_count = 0
             self._talkie = False
