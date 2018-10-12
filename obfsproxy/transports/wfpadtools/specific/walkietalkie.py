@@ -101,6 +101,7 @@ class WalkieTalkieTransport(WFPadTransport):
 
     def receiveSessionPageId(self, id):
         """Handle receiving new session page information (url)"""
+        log.debug("[walkie-talkie] received url id for new session, %s", id)
         self._setPadSequence(id)
         # if we are the client, relay the session page information to the bridge's PT
         if self.weAreClient:
@@ -210,7 +211,7 @@ class WalkieTalkieListener(object):
 
         def dataReceived(self, data):
             if data:
-                log.warning('[wt-listener]: received new webpage session notification from crawler')
+                log.debug('[wt-listener]: received new webpage session notification from crawler')
                 self._transport.receiveSessionPageId(data)
 
     class _ServerFactory(Factory):
