@@ -42,7 +42,7 @@ class WalkieTalkieTransport(WFPadTransport):
         self._port = const.WT_PORT
         self._initializeWTListener()
 
-        self._initializeState()
+        self._initializeWTState()
 
     @classmethod
     def register_external_mode_cli(cls, subparser):
@@ -91,7 +91,7 @@ class WalkieTalkieTransport(WFPadTransport):
         if self.weAreClient:
             self._listener = WalkieTalkieListener(self._port, self)
 
-    def _initializeState(self):
+    def _initializeWTState(self):
         self._burst_count = 0
         self._pad_count = 0
         if self.weAreClient:    # client begins in Talkie mode
