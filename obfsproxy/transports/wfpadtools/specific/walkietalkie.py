@@ -1,14 +1,16 @@
 """
-The module implements Tamaraw WF countermeasure proposed by Wang and Goldberg.
+The module implements the Walkie-Talkie WF countermeasure proposed by Wang .
 """
 from obfsproxy.transports.wfpadtools import const
 from obfsproxy.transports.wfpadtools.wfpad import WFPadTransport
 
 import os
 import pickle
+import time
 
 import obfsproxy.common.log as logging
 from obfsproxy.transports.wfpadtools import histo
+from obfsproxy.transports.wfpadtools.common import deferLater
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
@@ -83,9 +85,6 @@ class WalkieTalkieTransport(WFPadTransport):
             cls._decoy_directory = args.decoy
         if args.bursts:
             cls._burst_directory = args.bursts
-
-    #def onSessionStarts(self, sessId):
-    #    WFPadTransport.onSessionStarts(self, sessId)
 
     def _initializeWTListener(self):
         if self.weAreClient:
@@ -172,17 +171,72 @@ class WalkieTalkieTransport(WFPadTransport):
             self._talkie = False
             log.info('[walkie-talkie - %s] switching to Walkie mode', self.end)
 
+    def getCurrentBurstPaddingTarget(self):
+        """Retrieve the number of padding messages that should be sent
+        so as to achieve WT mold-padding for the current burst"""
+        burst_pair_no = self._burst_count//2
+        pad_pair = self._pad_seq[burst_pair_no] if burst_pair_no < len(self._pad_seq) else (0, 0)
+        pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
+        return pad_target
+
+    def flushBuffer(self):
+        """Overwrite WFPadTransport flushBuffer.
+        In case the buffer is not empty, the buffer is flushed and we send
+        these data over the wire. However, if the buffer is empty we immediately
+        send the required number of padding messages for the burst.
+        """
+        dataLen = len(self._buffer)
+
+        # If data buffer is empty and the PT is currently in talkie mode, send padding immediately
+        if dataLen <= 0 & self._talkie:
+            pad_target = self.getCurrentBurstPaddingTarget() - self._pad_count
+            log.debug("[walkie-talkie - %s] buffer is empty, send mold padding (%d).", self.end, pad_target)
+            while pad_target > 0:
+                self.sendIgnore()
+                pad_target -= 1
+            return
+
+        log.debug("[walkie-talkie - %s] %s bytes of data found in buffer."
+                  " Flushing buffer.", self.end, dataLen)
+        payloadLen = self._lengthDataProbdist.randomSample()
+
+        # INF_LABEL = -1 means we don't pad packets (can be done in crypto layer)
+        if payloadLen is const.INF_LABEL:
+            payloadLen = const.MPU if dataLen > const.MPU else dataLen
+        msgTotalLen = payloadLen + const.MIN_HDR_LEN
+
+        self.session.consecPaddingMsgs = 0
+
+        # If data in buffer fills the specified length, we just
+        # encapsulate and send the message.
+        if dataLen > payloadLen:
+            self.sendDataMessage(self._buffer.read(payloadLen))
+
+        # If data in buffer does not fill the message's payload,
+        # pad so that it reaches the specified length.
+        else:
+            paddingLen = payloadLen - dataLen
+            self.sendDataMessage(self._buffer.read(), paddingLen)
+            log.debug("[walkie-talkie - %s] Padding message to %d (adding %d).", self.end, msgTotalLen, paddingLen)
+
+        log.debug("[walkie-talkie - %s] Sent data message of length %d.", self.end, msgTotalLen)
+        self.session.lastSndDataDownstreamTs = self.session.lastSndDownstreamTs = time.time()
+
+        # schedule next call to flush the buffer
+        dataDelay = self._delayDataProbdist.randomSample()
+        self._deferData = deferLater(dataDelay, self.flushBuffer)
+        log.debug("[walkie-talkie - %s] data waiting in buffer, flushing again "
+                  "after delay of %s ms.", self.end, dataDelay)
+
     def sendIgnore(self, paddingLength=None):
         """Overwrite sendIgnore (sendPadding) function so
-        as to control when and how many padding messages are sent"""
+        as to set a hard limit on the number of padding messages are sent per burst"""
         if self._talkie:    # only send padding when in Talkie mode
-            burst_pair_no = self._burst_count//2
-            pad_pair = self._pad_seq[burst_pair_no] if burst_pair_no < len(self._pad_seq) else (0, 0)
-            pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
+            pad_target = self.getCurrentBurstPaddingTarget()
             if self._pad_count < pad_target:
                 WFPadTransport.sendIgnore(self, paddingLength)
                 self._pad_count += 1
-                log.debug("[walkie-talkie] sent burst padding. count = %d", self._pad_count)
+                log.debug("[walkie-talkie] sent burst padding. running count = %d", self._pad_count)
 
 
 class WalkieTalkieClient(WalkieTalkieTransport):
@@ -207,8 +261,7 @@ class WalkieTalkieListener(object):
     This allows the proxy to identify what decoy should be used for mold-padding
     """
     class _ServerProtocol(Protocol):
-        """
-        """
+        """Protocol handles connection establishment, loss, and data received events"""
         def __init__(self, factory, transport):
             self._factory = factory
             self._transport = transport
@@ -225,8 +278,7 @@ class WalkieTalkieListener(object):
                 self._transport.receiveSessionPageId(data)
 
     class _ServerFactory(Factory):
-        """
-        """
+        """Builds protocols for handling incoming connections to WT listener"""
         _listener = None
 
         def __init__(self, listener):
