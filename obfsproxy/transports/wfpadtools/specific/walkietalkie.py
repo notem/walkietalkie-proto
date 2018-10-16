@@ -188,12 +188,16 @@ class WalkieTalkieTransport(WFPadTransport):
         dataLen = len(self._buffer)
 
         # If data buffer is empty and the PT is currently in talkie mode, send padding immediately
-        if dataLen <= 0 & self._talkie:
-            pad_target = self.getCurrentBurstPaddingTarget() - self._pad_count
-            log.debug("[walkie-talkie - %s] buffer is empty, send mold padding (%d).", self.end, pad_target)
-            while pad_target > 0:
-                self.sendIgnore()
-                pad_target -= 1
+        if dataLen <= 0:
+            # don't send padding if not in Talkie mode
+            if self._talkie:
+                pad_target = self.getCurrentBurstPaddingTarget() - self._pad_count
+                log.debug("[walkie-talkie - %s] buffer is empty, send mold padding (%d).", self.end, pad_target)
+                while pad_target > 0:
+                    self.sendIgnore()
+                    pad_target -= 1
+            # exit the function without queuing further flushBuffer() calls
+            # the next flushBuffer() call will occur when new data enters the buffer from pushData()
             return
 
         log.debug("[walkie-talkie - %s] %s bytes of data found in buffer."
