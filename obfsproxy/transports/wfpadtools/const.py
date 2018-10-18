@@ -54,7 +54,9 @@ OP_INJECT_HISTO         = 6
 OP_TOTAL_PAD            = 7
 OP_PAYLOAD_PAD          = 8
 OP_BATCH_PAD            = 9
+
 OP_WT_PAGEID            = 10
+OP_WT_BURST_END         = 11
 
 
 # WFPad message structure fields's constants

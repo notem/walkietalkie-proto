@@ -202,6 +202,8 @@ def getOpcodeNames(opcode):
         return "RELAY BATCH_PAD"
     elif opcode == const.OP_WT_PAGEID:
         return "RELAY WT_PAGE_ID"
+    elif opcode == const.OP_WT_BURST_END:
+        return "RELAY WT_FAKE_BURST_END"
     else:
         return "Undefined"
 
@@ -246,7 +248,8 @@ def isOpCodeSane(opcode):
         const.OP_PAYLOAD_PAD,
         const.OP_SEND_PADDING,
         const.OP_TOTAL_PAD,
-        const.OP_WT_PAGEID
+        const.OP_WT_PAGEID,
+        const.OP_WT_BURST_END
     ]
     return (opcode in validOpCodes)
 

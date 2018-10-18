@@ -49,11 +49,16 @@ class PaddingPrimitivesInterface(object):
             # Walkie-Talkie primitives
             elif opcode == const.OP_WT_PAGEID:
                 self.relayPageID(*args)
+            elif opcode == const.OP_WT_BURST_END:
+                self.relayEndBurst(*args)
+
             else:
                 Exception("Client cannot receive control messages with opcode %s." % opcode)
 
         else:
-            pass
+            # Walkie-Talkie primitives
+            if opcode == const.OP_WT_BURST_END:
+                self.relayEndBurst(*args)
 
         # TODO: review. We are making the assumption that the session will always
         # start by a request sent by the client and it will end by a response sent
@@ -323,4 +328,13 @@ class PaddingPrimitivesInterface(object):
         :param page_id:
         :return:
         """
-        self.receiveSessionPageId(page_id)
+        try:
+            self.receiveSessionPageId(page_id)
+        except Exception, e:
+            log.exception("[primitives] failed to relay session page ID to child transport.")
+
+    def relayEndBurst(self, page_id):
+        try:
+            self.whenFakeBurstEnds()
+        except Exception, e:
+            log.exception("[primitives] failed to signal to child transport that a fake burst has ended.")
