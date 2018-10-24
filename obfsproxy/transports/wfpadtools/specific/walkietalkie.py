@@ -108,7 +108,7 @@ class WalkieTalkieTransport(WFPadTransport):
         # if we are the client, relay the session page information to the bridge's PT
         if self.weAreClient:
             log.debug("[walkie-talkie - %s] relaying session url to bridge", self.end)
-            self.sendControlMessage(const.OP_WT_PAGEID, [id])
+            self.sendControlMessage(const.OP_WT_PAGE_ID, [id])
 
     def _setPadSequence(self, id):
         """Load the burst sequence and decoy burst sequence for a particular webpage
@@ -139,8 +139,6 @@ class WalkieTalkieTransport(WFPadTransport):
         """Switch to talkie mode if outgoing packet is first in a new burst
         dont consider padding messages when mode switching"""
         if not self._talkie:
-            self._burst_count += 1
-            self._pad_count = 0
             self._talkie = True
             log.info('[walkie-talkie - %s] switching to Talkie mode', self.end)
 
@@ -148,10 +146,20 @@ class WalkieTalkieTransport(WFPadTransport):
         """Switch to walkie mode if incoming packet is first in a new burst
         dont consider padding messages when mode switching"""
         if self._talkie:
-            self._burst_count += 1
-            self._pad_count = 0
             self._talkie = False
             log.info('[walkie-talkie - %s] switching to Walkie mode', self.end)
+
+    def startTalkieBurst(self):
+        """Ready for the next walkie-talkie burst.
+        1) The PT should iterate the burst count so as to load the correct decoy pair.
+        2) pad messages sent should be reset to zero"""
+        log.info('[walkie-talkie - %s] readying for next Walkie-Talkie burst', self.end)
+        self._burst_count += 1
+        self._pad_count = 0
+        if self.weAreClient():
+            self._talkie = True
+        else:
+            self._talkie = False
 
     def whenFakeBurstEnds(self):
         """FakeBurstEnd packets are sent by the cooperating node during tail-padding
@@ -187,9 +195,11 @@ class WalkieTalkieTransport(WFPadTransport):
 
     def getCurrentBurstPaddingTarget(self):
         """Retrieve the number of padding messages that should be sent
-        so as to achieve WT mold-padding for the current burst"""
-        burst_pair_no = self._burst_count//2
-        pad_pair = self._pad_seq[burst_pair_no] if burst_pair_no < len(self._pad_seq) else (0, 0)
+        so as to achieve WT mold-padding for the current burst.
+        If there are no decoy burst pairs left in the decoy sequence,
+        return (0, 0) to indicate that no padding should be done"""
+        pad_pair = self._pad_seq[self._burst_count] \
+            if self._burst_count < len(self._pad_seq) else (0, 0)
         pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
         return pad_target
 
@@ -313,6 +323,10 @@ class WalkieTalkieListener(object):
     The crawler/browser should send the url/webpage identifier to this listener when beginning a browsing session
     This allows the proxy to identify what decoy should be used for mold-padding
     """
+    # WT listener Opcodes
+    WT_OP_PAGE         = 0
+    WT_OP_TALKIE_START = 1
+
     class _ServerProtocol(Protocol):
         """Protocol handles connection establishment, loss, and data received events"""
         def __init__(self, factory, transport):
@@ -327,8 +341,13 @@ class WalkieTalkieListener(object):
 
         def dataReceived(self, data):
             if data:
-                log.debug('[wt-listener]: received new webpage session notification from crawler')
-                self._transport.receiveSessionPageId(data)
+                command = int(data.encode()[:4])
+                if command == self.WT_OP_PAGE:
+                    log.debug('[wt-listener]: received new webpage session notification from crawler')
+                    self._transport.receiveSessionPageId(data[4:].decode())
+                elif command == self.WT_OP_TALKIE_START:
+                    log.debug('[wt-listener]: received talkie start notification from browser')
+                    self._transport.startTalkieBurst()
 
     class _ServerFactory(Factory):
         """Builds protocols for handling incoming connections to WT listener"""

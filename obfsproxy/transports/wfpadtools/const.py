@@ -55,9 +55,9 @@ OP_TOTAL_PAD            = 7
 OP_PAYLOAD_PAD          = 8
 OP_BATCH_PAD            = 9
 
-OP_WT_PAGEID            = 10
-OP_WT_BURST_END         = 11
-
+OP_WT_PAGE_ID           = 10
+OP_WT_TALKIE_START      = 11
+OP_WT_BURST_END         = 12
 
 # WFPad message structure fields's constants
 TOTLENGTH_POS           = 0

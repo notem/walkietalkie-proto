@@ -47,10 +47,12 @@ class PaddingPrimitivesInterface(object):
                 self.relayBatchPad(*args)
 
             # Walkie-Talkie primitives
-            elif opcode == const.OP_WT_PAGEID:
+            elif opcode == const.OP_WT_PAGE_ID:
                 self.relayPageID(*args)
             elif opcode == const.OP_WT_BURST_END:
                 self.relayEndBurst(*args)
+            elif opcode == const.OP_WT_TALKIE_START:
+                self.relayTalkieStart(*args)
 
             else:
                 Exception("Client cannot receive control messages with opcode %s." % opcode)
@@ -333,8 +335,14 @@ class PaddingPrimitivesInterface(object):
         except Exception, e:
             log.exception("[primitives] failed to relay session page ID to child transport.")
 
-    def relayEndBurst(self, page_id):
+    def relayEndBurst(self):
         try:
             self.whenFakeBurstEnds()
         except Exception, e:
             log.exception("[primitives] failed to signal to child transport that a fake burst has ended.")
+
+    def relayTalkieStart(self):
+        try:
+            self.startTalkieBurst()
+        except Exception, e:
+            log.exception("[primitives] failed to signal to child transport that the next walkie-talkie burst has started.")
