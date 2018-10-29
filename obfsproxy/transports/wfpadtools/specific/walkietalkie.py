@@ -16,6 +16,7 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint
 
+import struct
 
 log = logging.get_obfslogger()
 
@@ -341,7 +342,7 @@ class WalkieTalkieListener(object):
 
         def dataReceived(self, data):
             if data:
-                command = int(data.encode()[:4])
+                command = struct.unpack("<i", data[:4])[0]
                 if command == self.WT_OP_PAGE:
                     log.debug('[wt-listener]: received new webpage session notification from crawler')
                     self._transport.receiveSessionPageId(data[4:].decode())
