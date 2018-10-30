@@ -157,7 +157,7 @@ class WalkieTalkieTransport(WFPadTransport):
         log.info('[walkie-talkie - %s] readying for next Walkie-Talkie burst', self.end)
         self._burst_count += 1
         self._pad_count = 0
-        if self.weAreClient():
+        if self.weAreClient:
             self._talkie = True
         else:
             self._talkie = False
@@ -296,7 +296,7 @@ class WalkieTalkieTransport(WFPadTransport):
                     paddingLength = self._lengthDataProbdist.randomSample()
                     if paddingLength == const.INF_LABEL:
                         paddingLength = const.MPU
-                log.debug("[wfpad - %s] Sending ignore message.", self.end)
+                log.debug("[walkie-talkie - %s] Sending ignore message.", self.end)
                 self.sendDownstream(self._msgFactory.newIgnore(paddingLength))
 
                 self._pad_count += 1
