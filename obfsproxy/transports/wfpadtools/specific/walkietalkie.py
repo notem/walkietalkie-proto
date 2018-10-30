@@ -31,8 +31,8 @@ class WalkieTalkieTransport(WFPadTransport):
     def __init__(self):
         super(WalkieTalkieTransport, self).__init__()
 
-        self._burst_directory = const.WT_BASE_DIR
-        self._decoy_directory = const.WT_DECOY_DIR
+        self._burst_directory = const.WT_BASE_DIR if "BURST_DIR" not in os.environ else os.environ["BURST_DIR"]
+        self._decoy_directory = const.WT_DECOY_DIR if "DECOY_DIR" not in os.environ else os.environ["DECOY_DIR"]
 
         # Set constant length for messages
         self._length = const.MPU
