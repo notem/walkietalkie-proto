@@ -84,7 +84,7 @@ ARGS_POS                = 8
 # Length of WFPad's MTU in bytes.  Note that this is *not* the link MTU
 # which is probably 1500 (we substract 52 bytes = TCP (32B) + IP (20B) headers)
 TOR_CELL_SIZE           = 512
-MTU                     = 1448
+MTU                     = TOR_CELL_SIZE #1448
 MSS                     = 1460
 PSIZE                   = 600
 
