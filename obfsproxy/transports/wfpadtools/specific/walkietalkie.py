@@ -324,11 +324,9 @@ class WalkieTalkieListener(object):
     The crawler/browser should send the url/webpage identifier to this listener when beginning a browsing session
     This allows the proxy to identify what decoy should be used for mold-padding
     """
-    # WT listener Opcodes
-    WT_OP_PAGE         = 0
-    WT_OP_TALKIE_START = 1
 
     class _ServerProtocol(Protocol):
+
         """Protocol handles connection establishment, loss, and data received events"""
         def __init__(self, factory, transport):
             self._factory = factory
@@ -343,10 +341,10 @@ class WalkieTalkieListener(object):
         def dataReceived(self, data):
             if data:
                 command = struct.unpack("<i", data[:4])[0]
-                if command == self.WT_OP_PAGE:
+                if command == const.WT_OP_PAGE:
                     log.debug('[wt-listener]: received new webpage session notification from crawler')
                     self._transport.receiveSessionPageId(data[4:].decode())
-                elif command == self.WT_OP_TALKIE_START:
+                elif command == const.WT_OP_TALKIE_START:
                     log.debug('[wt-listener]: received talkie start notification from browser')
                     self._transport.startTalkieBurst()
 

@@ -59,6 +59,10 @@ OP_WT_PAGE_ID           = 10
 OP_WT_TALKIE_START      = 11
 OP_WT_BURST_END         = 12
 
+# WT Listener packet opcodes
+WT_OP_PAGE         = 0
+WT_OP_TALKIE_START = 1
+
 # WFPad message structure fields's constants
 TOTLENGTH_POS           = 0
 TOTLENGTH_LEN           = 2
