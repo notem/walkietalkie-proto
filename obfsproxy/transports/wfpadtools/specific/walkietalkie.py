@@ -154,11 +154,13 @@ class WalkieTalkieTransport(WFPadTransport):
         """Ready for the next walkie-talkie burst.
         1) The PT should iterate the burst count so as to load the correct decoy pair.
         2) pad messages sent should be reset to zero"""
-        log.info('[walkie-talkie - %s] readying for next Walkie-Talkie burst', self.end)
         self._burst_count += 1
         self._pad_count = 0
+        log.info('[walkie-talkie - %s] ready for next Walkie-Talkie '
+                 'burst no.{d}'.format(d=self._burst_count+1), self.end)
         if self.weAreClient:
             self._talkie = True
+            self.sendControlMessage(const.OP_WT_TALKIE_START, [])
         else:
             self._talkie = False
 
