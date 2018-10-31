@@ -97,9 +97,9 @@ class WalkieTalkieTransport(WFPadTransport):
         self._burst_count = 0
         self._pad_count = 0
         if self.weAreClient:    # client begins in Talkie mode
-            self._talkie = True
+            self._active = True
         else:                   # bridge begins in Walkie mode
-            self._talkie = False
+            self._active = False
 
     def receiveSessionPageId(self, id):
         """Handle receiving new session page information (url)"""
@@ -139,42 +139,43 @@ class WalkieTalkieTransport(WFPadTransport):
     def whenReceivedUpstream(self, data):
         """Switch to talkie mode if outgoing packet is first in a new burst
         dont consider padding messages when mode switching"""
-        if not self._talkie:
-            self._talkie = True
-            log.info('[walkie-talkie - %s] switching to Talkie mode', self.end)
+        if not self._active:
+            self._active = True
+            log.info('[walkie-talkie - %s] switching to silent mode', self.end)
 
     def whenReceivedDownstream(self, data):
         """Switch to walkie mode if incoming packet is first in a new burst
         dont consider padding messages when mode switching"""
-        if self._talkie:
-            self._talkie = False
-            log.info('[walkie-talkie - %s] switching to Walkie mode', self.end)
+        if self._active:
+            self._active = False
+            log.info('[walkie-talkie - %s] switching to active mode', self.end)
 
     def startTalkieBurst(self):
         """Ready for the next walkie-talkie burst.
         1) The PT should iterate the burst count so as to load the correct decoy pair.
-        2) pad messages sent should be reset to zero"""
+        2) num of pad messages sent should be reset to zero"""
         self._burst_count += 1
         self._pad_count = 0
-        log.info('[walkie-talkie - %s] ready for next Walkie-Talkie '
-                 'burst no.{d}'.format(d=self._burst_count+1), self.end)
+        log.info('[walkie-talkie - %s] next Walkie-Talkie '
+                 'burst no.{d}'.format(d=self._burst_count), self.end)
         if self.weAreClient:
-            self._talkie = True
-            self.sendControlMessage(const.OP_WT_TALKIE_START, [])
+            self._active = True
+            #self.sendControlMessage(const.OP_WT_TALKIE_START, [])
+            self._send_talkiestart_next_data = True
         else:
-            self._talkie = False
+            self._active = False
 
     def whenFakeBurstEnds(self):
         """FakeBurstEnd packets are sent by the cooperating node during tail-padding
         When such a packet is received, the receiving node should switch to Talkie mode and begin
         sending the next padding burst"""
-        if self._talkie:
+        if self._active:
             log.warning("[walkie-talkie - %s] received fake burst end"
                         " signal unexpectedly!", self.end)
         else:
             self._pad_count = 1
             self._burst_count += 1
-            self._talkie = True
+            self._active = True
             log.info('[walkie-talkie - %s] switching to Talkie mode '
                      'after fake burst end signal.', self.end)
 
@@ -217,7 +218,7 @@ class WalkieTalkieTransport(WFPadTransport):
         # If data buffer is empty and the PT is currently in talkie mode, send padding immediately
         if dataLen <= 0:
             # don't send padding if not in Talkie mode
-            if self._talkie:
+            if self._active:
                 pad_target = self.getCurrentBurstPaddingTarget() - self._pad_count
                 log.debug("[walkie-talkie - %s] buffer is empty, send mold padding (%d).", self.end, pad_target)
                 while pad_target > 0:
@@ -241,13 +242,21 @@ class WalkieTalkieTransport(WFPadTransport):
         # If data in buffer fills the specified length, we just
         # encapsulate and send the message.
         if dataLen > payloadLen:
-            self.sendDataMessage(self._buffer.read(payloadLen))
+            if self._send_talkiestart_next_data:
+                self.sendDataMessage(self._buffer.read(payloadLen), opcode=const.OP_WT_TALKIE_START)
+                self._send_talkiestart_next_data = False
+            else:
+                self.sendDataMessage(self._buffer.read(payloadLen))
 
         # If data in buffer does not fill the message's payload,
         # pad so that it reaches the specified length.
         else:
             paddingLen = payloadLen - dataLen
-            self.sendDataMessage(self._buffer.read(), paddingLen)
+            if self._send_talkiestart_next_data:
+                self.sendDataMessage(self._buffer.read(), paddingLen, opcode=const.OP_WT_TALKIE_START)
+                self._send_talkiestart_next_data = False
+            else:
+                self.sendDataMessage(self._buffer.read(), paddingLen)
             log.debug("[walkie-talkie - %s] Padding message to %d (adding %d).", self.end, msgTotalLen, paddingLen)
 
         log.debug("[walkie-talkie - %s] Sent data message of length %d.", self.end, msgTotalLen)
@@ -258,6 +267,17 @@ class WalkieTalkieTransport(WFPadTransport):
         self._deferData = deferLater(dataDelay, self.flushBuffer)
         log.debug("[walkie-talkie - %s] data waiting in buffer, flushing again "
                   "after delay of %s ms.", self.end, dataDelay)
+
+    def sendDataMessage(self, payload="", paddingLen=0, opcode=None):
+        """Send data message."""
+        if opcode:
+            log.debug("[wfpad - %s] Sending control message %d piggy-backing on data message with %s bytes payload"
+                      " and %s bytes padding", opcode, self.end, len(payload), paddingLen)
+            self.sendDownstream(self._msgFactory.new(payload, paddingLen, opcode=opcode))
+        else:
+            log.debug("[wfpad - %s] Sending data message with %s bytes payload"
+                      " and %s bytes padding", self.end, len(payload), paddingLen)
+            self.sendDownstream(self._msgFactory.new(payload, paddingLen))
 
     def onSessionEnds(self, sessId):
         """The communication session with the target server has ended.
@@ -281,7 +301,7 @@ class WalkieTalkieTransport(WFPadTransport):
         # bursts left in the decoy sequence
         pad_target = self.getCurrentBurstPaddingTarget()
         if pad_target > 0:
-            if not self._talkie:
+            if not self._active:
                 self._sendFakeBurst(pad_target)
         else:
             self.onEndPadding()
@@ -289,7 +309,7 @@ class WalkieTalkieTransport(WFPadTransport):
     def sendIgnore(self, paddingLength=None):
         """Overwrite sendIgnore (sendPadding) function so
         as to set a hard limit on the number of padding messages are sent per burst"""
-        if self._talkie:    # only send padding when in Talkie mode
+        if self._active:    # only send padding when in Talkie mode
             pad_target = self.getCurrentBurstPaddingTarget()
             if self._pad_count < pad_target:
 
