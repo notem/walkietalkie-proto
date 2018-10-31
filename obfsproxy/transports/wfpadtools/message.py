@@ -232,8 +232,12 @@ def isSane(totalLen, payloadLen, flags):
         const.FLAG_CONTROL | const.FLAG_PADDING | const.FLAG_LAST,
         const.FLAG_CONTROL | const.FLAG_DATA | const.FLAG_LAST
     ]
-    return isFine(totalLen) and isFine(payloadLen) and \
-        totalLen >= payloadLen and (flags in validFlags)
+    lengths_valid = isFine(totalLen) and isFine(payloadLen) and totalLen >= payloadLen
+    flags_valid = (flags in validFlags)
+    if not lengths_valid or flags_valid:
+        log.debug("[wfpad] lengths_valid = {_1},{_2},{_3} and flags_valid = {flags}"
+                  .format(_1=isFine(totalLen), _2=isFine(payloadLen), _3=isFine(totalLen >= payloadLen), flags=flags_valid))
+    return lengths_valid and flags_valid
 
 
 def isOpCodeSane(opcode):
