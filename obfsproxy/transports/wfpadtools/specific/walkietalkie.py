@@ -94,6 +94,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self._listener.listen()
 
     def _initializeWTState(self):
+        self._send_talkiestart_next_data = False
         self._burst_count = 0
         self._pad_count = 0
         if self.weAreClient:    # client begins in Talkie mode
@@ -141,14 +142,14 @@ class WalkieTalkieTransport(WFPadTransport):
         dont consider padding messages when mode switching"""
         if not self._active:
             self._active = True
-            log.info('[walkie-talkie - %s] switching to silent mode', self.end)
+            log.info('[walkie-talkie - %s] switching to active mode', self.end)
 
     def whenReceivedDownstream(self, data):
         """Switch to walkie mode if incoming packet is first in a new burst
         dont consider padding messages when mode switching"""
         if self._active:
             self._active = False
-            log.info('[walkie-talkie - %s] switching to active mode', self.end)
+            log.info('[walkie-talkie - %s] switching to silent mode', self.end)
 
     def startTalkieBurst(self):
         """Ready for the next walkie-talkie burst.
@@ -271,11 +272,11 @@ class WalkieTalkieTransport(WFPadTransport):
     def sendDataMessage(self, payload="", paddingLen=0, opcode=None):
         """Send data message."""
         if opcode:
-            log.debug("[wfpad - %s] Sending control message %d piggy-backing on data message with %s bytes payload"
+            log.debug("[walkie-talkie - %s] Sending control message %d piggy-backing on data message with %s bytes payload"
                       " and %s bytes padding", opcode, self.end, len(payload), paddingLen)
             self.sendDownstream(self._msgFactory.new(payload, paddingLen, opcode=opcode))
         else:
-            log.debug("[wfpad - %s] Sending data message with %s bytes payload"
+            log.debug("[walkie-talkie - %s] Sending data message with %s bytes payload"
                       " and %s bytes padding", self.end, len(payload), paddingLen)
             self.sendDownstream(self._msgFactory.new(payload, paddingLen))
 
