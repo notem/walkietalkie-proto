@@ -165,8 +165,6 @@ class WalkieTalkieTransport(WFPadTransport):
             #self.sendControlMessage(const.OP_WT_TALKIE_START, [])
         else:
             self._active = False
-        log.debug('[walkie-talkie - %s] send_talkie_start_next_data set to {x}'
-                  .format(x=self._send_talkie_start_next_data))
 
     def whenFakeBurstEnds(self):
         """FakeBurstEnd packets are sent by the cooperating node during tail-padding
@@ -179,8 +177,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self._pad_count = 1
             self._burst_count += 1
             self._active = True
-            log.info('[walkie-talkie - %s] switching to Talkie mode '
-                     'after fake burst end signal.', self.end)
+            log.info('[walkie-talkie - %s] ready to send next fake burst.', self.end)
 
             pad_target = self.getCurrentBurstPaddingTarget()
             if pad_target > 0:
