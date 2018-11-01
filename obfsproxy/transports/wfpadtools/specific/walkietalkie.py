@@ -263,14 +263,8 @@ class WalkieTalkieTransport(WFPadTransport):
     def sendDataMessage(self, payload="", paddingLen=0):
         """Send data message."""
         if self.weAreClient and self._notify_bridge:
-            log.debug("[walkie-talkie - %s] Sending WT start control message piggy-backing "
-                      "on message with %s bytes payload and %s bytes padding",
-                      self.end, len(payload), paddingLen)
-            self.sendDownstream(self._msgFactory.new(payload, paddingLen,
-                                flags=(const.FLAG_DATA | const.FLAG_CONTROL),
-                                opcode=const.OP_WT_TALKIE_START,
-                                args=[]))
-            log.debug("[walkie-talkie - %s] Sending WT burst start control message", self.end)
+            log.debug("[walkie-talkie - %s] Sending WT burst start control message with piggybacked data", self.end)
+            self.sendDownstream(self._msgFactory.encapsulate(payload, const.OP_WT_TALKIE_START, []))
             self._notify_bridge = False
         else:
             log.debug("[walkie-talkie - %s] Sending data message with %s bytes payload"
