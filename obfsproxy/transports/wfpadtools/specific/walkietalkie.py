@@ -94,7 +94,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self._listener.listen()
 
     def _initializeWTState(self):
-        self._send_talkiestart_next_data = False
+        self._send_talkie_start_next_data = False
         self._burst_count = 0
         self._pad_count = 0
         if self.weAreClient:    # client begins in Talkie mode
@@ -162,9 +162,11 @@ class WalkieTalkieTransport(WFPadTransport):
         if self.weAreClient:
             self._active = True
             #self.sendControlMessage(const.OP_WT_TALKIE_START, [])
-            self._send_talkiestart_next_data = True
+            self._send_talkie_start_next_data = True
         else:
             self._active = False
+        log.debug('[walkie-talkie - %s] send_talkie_start_next_data set to {x}'
+                  .format(x=self._send_talkie_start_next_data))
 
     def whenFakeBurstEnds(self):
         """FakeBurstEnd packets are sent by the cooperating node during tail-padding
@@ -243,21 +245,13 @@ class WalkieTalkieTransport(WFPadTransport):
         # If data in buffer fills the specified length, we just
         # encapsulate and send the message.
         if dataLen > payloadLen:
-            if self._send_talkiestart_next_data:
-                self.sendDataMessage(self._buffer.read(payloadLen), opcode=const.OP_WT_TALKIE_START)
-                self._send_talkiestart_next_data = False
-            else:
-                self.sendDataMessage(self._buffer.read(payloadLen))
+            self.sendDataMessage(self._buffer.read(payloadLen))
 
         # If data in buffer does not fill the message's payload,
         # pad so that it reaches the specified length.
         else:
             paddingLen = payloadLen - dataLen
-            if self._send_talkiestart_next_data:
-                self.sendDataMessage(self._buffer.read(), paddingLen, opcode=const.OP_WT_TALKIE_START)
-                self._send_talkiestart_next_data = False
-            else:
-                self.sendDataMessage(self._buffer.read(), paddingLen)
+            self.sendDataMessage(self._buffer.read(), paddingLen)
             log.debug("[walkie-talkie - %s] Padding message to %d (adding %d).", self.end, msgTotalLen, paddingLen)
 
         log.debug("[walkie-talkie - %s] Sent data message of length %d.", self.end, msgTotalLen)
@@ -269,14 +263,16 @@ class WalkieTalkieTransport(WFPadTransport):
         log.debug("[walkie-talkie - %s] data waiting in buffer, flushing again "
                   "after delay of %s ms.", self.end, dataDelay)
 
-    def sendDataMessage(self, payload="", paddingLen=0, opcode=None):
+    def sendDataMessage(self, payload="", paddingLen=0):
         """Send data message."""
-        if opcode is not None:
-            log.debug("[walkie-talkie - %s] Sending control message %d piggy-backing on data message with %s bytes "
-                      "payload and %s bytes padding" % (self.end, opcode,  len(payload), paddingLen))
+        if self._send_talkie_start_next_data:
+            log.debug("[walkie-talkie - %s] Sending WT start control message piggy-backing "
+                      "on message with %s bytes payload and %s bytes padding" %
+                      (self.end, len(payload), paddingLen))
             self.sendDownstream(self._msgFactory.new(payload, paddingLen,
                                                      flags=(const.FLAG_DATA | const.FLAG_CONTROL),
-                                                     opcode=opcode))
+                                                     opcode=const.OP_WT_TALKIE_START))
+            self._send_talkie_start_next_data = False
         else:
             log.debug("[walkie-talkie - %s] Sending data message with %s bytes payload"
                       " and %s bytes padding", self.end, len(payload), paddingLen)
