@@ -267,8 +267,9 @@ class WalkieTalkieTransport(WFPadTransport):
                       "on message with %s bytes payload and %s bytes padding",
                       self.end, len(payload), paddingLen)
             self.sendDownstream(self._msgFactory.new(payload, paddingLen,
-                                                     flags=(const.FLAG_DATA | const.FLAG_CONTROL),
-                                                     opcode=const.OP_WT_TALKIE_START))
+                                flags=(const.FLAG_DATA | const.FLAG_CONTROL),
+                                opcode=const.OP_WT_TALKIE_START,
+                                args=[]))
             log.debug("[walkie-talkie - %s] Sending WT burst start control message", self.end)
             self._notify_bridge = False
         else:
