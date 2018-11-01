@@ -234,9 +234,6 @@ def isSane(totalLen, payloadLen, flags):
     ]
     lengths_valid = isFine(totalLen) and isFine(payloadLen) and totalLen >= payloadLen
     flags_valid = (flags in validFlags)
-    if not lengths_valid or flags_valid:
-        log.debug("[wfpad] lengths_valid = {_1},{_2},{_3} and flags_valid = {flags}"
-                  .format(_1=isFine(totalLen), _2=isFine(payloadLen), _3=isFine(totalLen >= payloadLen), flags=flags_valid))
     return lengths_valid and flags_valid
 
 
