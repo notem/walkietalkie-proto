@@ -96,6 +96,7 @@ class WalkieTalkieTransport(WFPadTransport):
     def _initializeWTState(self):
         self._burst_count = 0
         self._pad_count = 0
+        self._packets_seen = 0
         if self.weAreClient:    # client begins in Talkie mode
             self._active = True
             self._notify_bridge = False
@@ -147,6 +148,7 @@ class WalkieTalkieTransport(WFPadTransport):
     def whenReceivedDownstream(self, data):
         """Switch to walkie mode if incoming packet is first in a new burst
         dont consider padding messages when mode switching"""
+        self._packets_seen += 1
         if self._active:
             self._active = False
             log.info('[walkie-talkie - %s] switching to silent mode', self.end)
@@ -155,16 +157,18 @@ class WalkieTalkieTransport(WFPadTransport):
         """Ready for the next walkie-talkie burst.
         1) The PT should iterate the burst count so as to load the correct decoy pair.
         2) num of pad messages sent should be reset to zero"""
-        self._burst_count += 1
-        self._pad_count = 0
-        log.info('[walkie-talkie - %s] next Walkie-Talkie '
-                 'burst no.{d}'.format(d=self._burst_count), self.end)
-        if self.weAreClient:
-            self._active = True
-            self._notify_bridge = True
-            #self.sendControlMessage(const.OP_WT_TALKIE_START, [])
-        else:
-            self._active = False
+        if self._packets_seen > 0:
+            self._packets_seen = 0
+            self._burst_count += 1
+            self._pad_count = 0
+            log.info('[walkie-talkie - %s] next Walkie-Talkie '
+                     'burst no.{d}'.format(d=self._burst_count), self.end)
+            if self.weAreClient:
+                self._active = True
+                self._notify_bridge = True
+                #self.sendControlMessage(const.OP_WT_TALKIE_START, [])
+            else:
+                self._active = False
 
     def whenFakeBurstEnds(self):
         """FakeBurstEnd packets are sent by the cooperating node during tail-padding
