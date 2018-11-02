@@ -93,9 +93,9 @@ CTRL_FIELDS_LEN         = CONTROL_LEN + ARGS_TOTAL_LENGTH_LEN
 HDR_CTRL_LEN            = MIN_HDR_LEN + CTRL_FIELDS_LEN
 
 # Maximum payload unit of a WFPad message in bytes
-MPU                     = TOR_CELL_SIZE + MIN_HDR_LEN #MTU - MIN_HDR_LEN
-MPU_CTRL                = TOR_CELL_SIZE + HDR_CTRL_LEN #MTU - HDR_CTRL_LEN
-MTU                     = max(MPU, MPU_CTRL) #1448
+MPU                     = TOR_CELL_SIZE #MTU - MIN_HDR_LEN
+MPU_CTRL                = TOR_CELL_SIZE #MTU - HDR_CTRL_LEN
+MTU                     = HDR_CTRL_LEN + MPU #1448
 
 # Max delay
 MAX_DELAY               = 262144
