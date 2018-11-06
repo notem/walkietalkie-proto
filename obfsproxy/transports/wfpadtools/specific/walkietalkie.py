@@ -120,22 +120,29 @@ class WalkieTalkieTransport(WFPadTransport):
         dbs = self._loadSequence(id, self._decoy_directory)
         pad_seq = []
         for index, _ in enumerate(dbs):
-            if len(rbs) < index:
-                break
-            pair = (max(0, dbs[index][0] - rbs[index][0]),
-                    max(0, dbs[index][1] - rbs[index][1]))
+            if index >= len(rbs):
+                real_in = 0
+                real_out = 0
+            else:
+                real_in = rbs[index][0]
+                real_out = rbs[index][1]
+            pair = (max(0, dbs[index][0] - real_in),
+                    max(0, dbs[index][1] - real_out))
             pad_seq.append(pair)
         self._pad_seq = pad_seq
+        log.info('[walkie-talkie - %s] new padding sequence %s', self.end, str(pad_seq))
+        self._burst_count = 0
 
     def _loadSequence(self, id, directory):
         """Load a burst sequence from a pickle file"""
         seq = []
-        fname = os.path.join(directory, id, ".pkl")
+        fname = os.path.join(directory, id+".pkl")
         if os.path.exists(fname):
             with open(fname) as fi:
                 seq = pickle.load(fi)
+                log.debug('[walkie-talkie - %s] loaded burst sequence from %s as %s', self.end, id, str(seq))
         else:
-            log.info('[walkie-talkie - %s] unable to load sequence for %s from %s', self.end, id, directory)
+            log.debug('[walkie-talkie - %s] unable to load sequence for %s from %s', self.end, id, directory)
         return seq
 
     def whenReceivedUpstream(self, data):
@@ -143,7 +150,6 @@ class WalkieTalkieTransport(WFPadTransport):
         dont consider padding messages when mode switching"""
         if not self._active:
             self._active = True
-            log.info('[walkie-talkie - %s] switching to active mode', self.end)
 
     def whenReceivedDownstream(self, data):
         """Switch to walkie mode if incoming packet is first in a new burst
@@ -151,17 +157,17 @@ class WalkieTalkieTransport(WFPadTransport):
         self._packets_seen += 1
         if self._active:
             self._active = False
-            log.info('[walkie-talkie - %s] switching to silent mode', self.end)
 
     def startTalkieBurst(self):
         """Ready for the next walkie-talkie burst.
         1) The PT should iterate the burst count so as to load the correct decoy pair.
         2) num of pad messages sent should be reset to zero"""
+        log.info('[walkie-talkie - %s] number of packets seen %s', self.end, self._packets_seen)
         if self._packets_seen > 0:
             self._packets_seen = 0
             self._burst_count += 1
             self._pad_count = 0
-            log.info('[walkie-talkie - %s] next Walkie-Talkie '
+            log.debug('[walkie-talkie - %s] next Walkie-Talkie '
                      'burst no.{d}'.format(d=self._burst_count), self.end)
             if self.weAreClient:
                 self._active = True
@@ -206,8 +212,8 @@ class WalkieTalkieTransport(WFPadTransport):
         so as to achieve WT mold-padding for the current burst.
         If there are no decoy burst pairs left in the decoy sequence,
         return (0, 0) to indicate that no padding should be done"""
-        pad_pair = self._pad_seq[self._burst_count] \
-            if self._burst_count < len(self._pad_seq) else (0, 0)
+        log.info("[walkie-talkie - %s] current burst count %s; pad_seq_len %s", self.end, self._burst_count, len(self._pad_seq))
+        pad_pair = self._pad_seq[self._burst_count] if self._burst_count < len(self._pad_seq) else (0, 0)
         pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
         return pad_target
 
@@ -223,6 +229,7 @@ class WalkieTalkieTransport(WFPadTransport):
         if dataLen <= 0:
             # don't send padding if not in Talkie mode
             if self._active:
+                log.debug("[walkie-talkie - %s] pad target %s, pad count %s",self.getCurrentBurstPaddingTarget(), self._pad_count)
                 pad_target = self.getCurrentBurstPaddingTarget() - self._pad_count
                 log.debug("[walkie-talkie - %s] buffer is empty, send mold padding (%d).", self.end, pad_target)
                 while pad_target > 0:
