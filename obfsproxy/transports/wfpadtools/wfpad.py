@@ -450,9 +450,9 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
 
             if msg.flags & const.FLAG_CONTROL:
                 # Process control messages
-                #payload = msg.payload
-                #if len(payload) > 0:
-                #    self.circuit.upstream.write(payload)
+                payload = msg.payload
+                if len(payload) > 0:
+                    self.circuit.upstream.write(payload)
                 log.debug("[wfpad - %s] Control flag detected, processing opcode %d.", self.end, msg.opcode)
                 self.receiveControlMessage(msg.opcode, msg.args)
                 self.session.history.append(
