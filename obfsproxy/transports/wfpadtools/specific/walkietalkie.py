@@ -212,8 +212,8 @@ class WalkieTalkieTransport(WFPadTransport):
         so as to achieve WT mold-padding for the current burst.
         If there are no decoy burst pairs left in the decoy sequence,
         return (0, 0) to indicate that no padding should be done"""
-        log.info("[walkie-talkie - %s] current burst count %s; pad_seq_len %s", self.end, self._burst_count, len(self._pad_seq))
-        pad_pair = self._pad_seq[self._burst_count] if self._burst_count < len(self._pad_seq) else (0, 0)
+        pad_pair = self._pad_seq[self._burst_count] \
+            if self._burst_count < len(self._pad_seq) else (0, 0)
         pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
         return pad_target
 
@@ -229,7 +229,6 @@ class WalkieTalkieTransport(WFPadTransport):
         if dataLen <= 0:
             # don't send padding if not in Talkie mode
             if self._active:
-                log.debug("[walkie-talkie - %s] pad target %s, pad count %s",self.getCurrentBurstPaddingTarget(), self._pad_count)
                 pad_target = self.getCurrentBurstPaddingTarget() - self._pad_count
                 log.debug("[walkie-talkie - %s] buffer is empty, send mold padding (%d).", self.end, pad_target)
                 while pad_target > 0:
@@ -275,7 +274,8 @@ class WalkieTalkieTransport(WFPadTransport):
         """Send data message."""
         if self.weAreClient and self._notify_bridge:
             log.debug("[walkie-talkie - %s] Sending WT burst start control message with piggybacked data", self.end)
-            self.sendDownstream(self._msgFactory.encapsulate(payload, const.OP_WT_TALKIE_START, []))
+            self.sendDownstream(self._msgFactory.encapsulate(payload, const.OP_WT_TALKIE_START, [],
+                                                             lenProbdist=self._lengthDataProbdist))
             self._notify_bridge = False
         else:
             log.debug("[walkie-talkie - %s] Sending data message with %s bytes payload"

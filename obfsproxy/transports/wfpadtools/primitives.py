@@ -50,9 +50,9 @@ class PaddingPrimitivesInterface(object):
             elif opcode == const.OP_WT_PAGE_ID:
                 self.relayPageID(*args)
             elif opcode == const.OP_WT_BURST_END:
-                self.relayEndBurst()
+                self.relayEndBurst(*args)
             elif opcode == const.OP_WT_TALKIE_START:
-                self.relayTalkieStart()
+                self.relayTalkieStart(*args)
 
             else:
                 Exception("Client cannot receive control messages with opcode %s." % opcode)
@@ -60,7 +60,7 @@ class PaddingPrimitivesInterface(object):
         else:
             # Walkie-Talkie primitives
             if opcode == const.OP_WT_BURST_END:
-                self.relayEndBurst()
+                self.relayEndBurst(*args)
 
         # TODO: review. We are making the assumption that the session will always
         # start by a request sent by the client and it will end by a response sent

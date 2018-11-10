@@ -232,9 +232,8 @@ def isSane(totalLen, payloadLen, flags):
         const.FLAG_CONTROL | const.FLAG_PADDING | const.FLAG_LAST,
         const.FLAG_CONTROL | const.FLAG_DATA | const.FLAG_LAST
     ]
-    lengths_valid = isFine(totalLen) and isFine(payloadLen) and totalLen >= payloadLen
-    flags_valid = (flags in validFlags)
-    return lengths_valid and flags_valid
+    return isFine(totalLen) and isFine(payloadLen) and \
+        totalLen >= payloadLen and (flags in validFlags)
 
 
 def isOpCodeSane(opcode):
