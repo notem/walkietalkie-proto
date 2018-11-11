@@ -242,24 +242,40 @@ class WalkieTalkieTransport(WFPadTransport):
                   " Flushing buffer.", self.end, dataLen)
         payloadLen = self._lengthDataProbdist.randomSample()
 
-        # INF_LABEL = -1 means we don't pad packets (can be done in crypto layer)
-        if payloadLen is const.INF_LABEL:
-            payloadLen = const.MPU if dataLen > const.MPU else dataLen
-        msgTotalLen = payloadLen + const.MIN_HDR_LEN
+        if self._notify_bridge:
+            # INF_LABEL = -1 means we don't pad packets (can be done in crypto layer)
+            if payloadLen is const.INF_LABEL:
+                payloadLen = const.MPU_CTRL if dataLen > const.MPU_CTRL else dataLen
+            msgTotalLen = payloadLen + const.HDR_CTRL_LEN
 
-        self.session.consecPaddingMsgs = 0
-
-        # If data in buffer fills the specified length, we just
-        # encapsulate and send the message.
-        if dataLen > payloadLen:
-            self.sendDataMessage(self._buffer.read(payloadLen))
-
-        # If data in buffer does not fill the message's payload,
-        # pad so that it reaches the specified length.
+            flags = const.FLAG_CONTROL | const.FLAG_DATA | const.FLAG_LAST
+            if dataLen > payloadLen:
+                self.sendDownstream(self._msgFactory.new(self._buffer.read(payloadLen), 0,
+                                                         flags, const.OP_WT_TALKIE_START, ""))
+            else:
+                paddingLen = payloadLen - dataLen
+                self.sendDownstream(self._msgFactory.new(self._buffer.read(payloadLen), paddingLen,
+                                                         flags, const.OP_WT_TALKIE_START, ""))
+            self._notify_bridge = False
         else:
-            paddingLen = payloadLen - dataLen
-            self.sendDataMessage(self._buffer.read(), paddingLen)
-            log.debug("[walkie-talkie - %s] Padding message to %d (adding %d).", self.end, msgTotalLen, paddingLen)
+            # INF_LABEL = -1 means we don't pad packets (can be done in crypto layer)
+            if payloadLen is const.INF_LABEL:
+                payloadLen = const.MPU if dataLen > const.MPU else dataLen
+            msgTotalLen = payloadLen + const.MIN_HDR_LEN
+
+            self.session.consecPaddingMsgs = 0
+
+            # If data in buffer fills the specified length, we just
+            # encapsulate and send the message.
+            if dataLen > payloadLen:
+                self.sendDataMessage(self._buffer.read(payloadLen))
+
+            # If data in buffer does not fill the message's payload,
+            # pad so that it reaches the specified length.
+            else:
+                paddingLen = payloadLen - dataLen
+                self.sendDataMessage(self._buffer.read(), paddingLen)
+                log.debug("[walkie-talkie - %s] Padding message to %d (adding %d).", self.end, msgTotalLen, paddingLen)
 
         log.debug("[walkie-talkie - %s] Sent data message of length %d.", self.end, msgTotalLen)
         self.session.lastSndDataDownstreamTs = self.session.lastSndDownstreamTs = time.time()
@@ -269,18 +285,6 @@ class WalkieTalkieTransport(WFPadTransport):
         self._deferData = deferLater(dataDelay, self.flushBuffer)
         log.debug("[walkie-talkie - %s] data waiting in buffer, flushing again "
                   "after delay of %s ms.", self.end, dataDelay)
-
-    def sendDataMessage(self, payload="", paddingLen=0):
-        """Send data message."""
-        if self.weAreClient and self._notify_bridge:
-            log.debug("[walkie-talkie - %s] Sending WT burst start control message with piggybacked data", self.end)
-            self.sendDownstream(self._msgFactory.encapsulate(payload, const.OP_WT_TALKIE_START, [],
-                                                             lenProbdist=self._lengthDataProbdist))
-            self._notify_bridge = False
-        else:
-            log.debug("[walkie-talkie - %s] Sending data message with %s bytes payload"
-                      " and %s bytes padding", self.end, len(payload), paddingLen)
-            self.sendDownstream(self._msgFactory.new(payload, paddingLen))
 
     def onSessionEnds(self, sessId):
         """The communication session with the target server has ended.
