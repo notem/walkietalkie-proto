@@ -172,7 +172,6 @@ class WalkieTalkieTransport(WFPadTransport):
             if self.weAreClient:
                 self._active = True
                 self._notify_bridge = True
-                #self.sendControlMessage(const.OP_WT_TALKIE_START, [])
             else:
                 self._active = False
 
@@ -248,7 +247,7 @@ class WalkieTalkieTransport(WFPadTransport):
                 payloadLen = const.MPU_CTRL if dataLen > const.MPU_CTRL else dataLen
             msgTotalLen = payloadLen + const.HDR_CTRL_LEN
 
-            flags = const.FLAG_CONTROL | const.FLAG_DATA | const.FLAG_LAST
+            flags = const.FLAG_CONTROL | const.FLAG_LAST # | const.FLAG_DATA
             if dataLen > payloadLen:
                 self.sendDownstream(self._msgFactory.new(self._buffer.read(payloadLen), 0,
                                                          flags, const.OP_WT_TALKIE_START, ""))
