@@ -97,9 +97,9 @@ class WalkieTalkieTransport(WFPadTransport):
         self._burst_count = 0
         self._pad_count = 0
         self._packets_seen = 0
+        self._notify_bridge = False
         if self.weAreClient:    # client begins in Talkie mode
             self._active = True
-            self._notify_bridge = False
         else:                   # bridge begins in Walkie mode
             self._active = False
 
