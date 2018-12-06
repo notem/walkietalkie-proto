@@ -41,6 +41,8 @@ class WFPadShimObserver(object):
 
     def onDisconnect(self, connId):
         """Remove id of connection to the set of open connections."""
+        log.debug("[wfpad - shim obs] connection %d disconnect from session %s." % (connId, self._sessId))
+        log.debug("[wfpad - shim obs] session %s has %d connections." % (self._sessId, self.getNumConnections(self._sessId)))
         if self._sessId in self._sessions and \
                 connId in self._sessions[self._sessId]:
             self._sessions[self._sessId].remove(connId)

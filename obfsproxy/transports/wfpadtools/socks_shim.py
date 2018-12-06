@@ -38,11 +38,13 @@ class _ShimClientProtocol(Protocol):
         self._server = server
 
     def connectionMade(self):
+        log.warning('[shim]: making connection with Tor')
         self._id = self._shim.notifyConnect()
         self._server._client = self
         self.writeToSocksPort(self._server._buf.read())
 
     def connectionLost(self, reason):
+        log.warning('[shim]: closed connection with Tor')
         self._shim.notifyDisconnect(self._id)
 
     def dataReceived(self, data):

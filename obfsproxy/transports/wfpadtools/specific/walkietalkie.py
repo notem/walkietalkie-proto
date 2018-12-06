@@ -97,10 +97,17 @@ class WalkieTalkieTransport(WFPadTransport):
         self._burst_count = 0
         self._pad_count = 0
         self._packets_seen = 0
+	
+	# next packet should notify server of WT burst start
         self._notify_bridge = False
-        if self.weAreClient:    # client begins in Talkie mode
+
+        # client begins each burst with padding enabled
+        # for the server, padding is disabled until the first outgoing packet is seen
+        #  this mechanism is best effort to insure server 
+        #  does not send bursts' padding as the burst begins
+        if self.weAreClient:
             self._active = True
-        else:                   # bridge begins in Walkie mode
+        else:
             self._active = False
 
     def receiveSessionPageId(self, id):
@@ -146,14 +153,12 @@ class WalkieTalkieTransport(WFPadTransport):
         return seq
 
     def whenReceivedUpstream(self, data):
-        """Switch to talkie mode if outgoing packet is first in a new burst
-        dont consider padding messages when mode switching"""
+        """enable padding when real outgoing packets are seen"""
         if not self._active:
             self._active = True
 
     def whenReceivedDownstream(self, data):
-        """Switch to walkie mode if incoming packet is first in a new burst
-        dont consider padding messages when mode switching"""
+        """disable padding when incoming packets are seen"""
         self._packets_seen += 1
         if self._active:
             self._active = False
@@ -168,7 +173,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self._burst_count += 1
             self._pad_count = 0
             log.debug('[walkie-talkie - %s] next Walkie-Talkie '
-                     'burst no.{d}'.format(d=self._burst_count), self.end)
+                     'burst no.{d}, padding={p}'.format(d=self._burst_count, p=self.getCurrentBurstPaddingTarget()), self.end)
             if self.weAreClient:
                 self._active = True
                 self._notify_bridge = True
@@ -211,8 +216,9 @@ class WalkieTalkieTransport(WFPadTransport):
         so as to achieve WT mold-padding for the current burst.
         If there are no decoy burst pairs left in the decoy sequence,
         return (0, 0) to indicate that no padding should be done"""
-        pad_pair = self._pad_seq[self._burst_count] \
-            if self._burst_count < len(self._pad_seq) else (0, 0)
+        bcount = self._burst_count-1 if self._burst_count-1 >= 0 else 0
+        pad_pair = self._pad_seq[bcount] \
+            if bcount < len(self._pad_seq) else (0, 0)
         pad_target = pad_pair[0] if self.weAreClient else pad_pair[1]
         return pad_target
 
@@ -305,12 +311,20 @@ class WalkieTalkieTransport(WFPadTransport):
         # the PT should be in Walkie mode if the previous burst was incoming
         # in such a case, the new outgoing (fake) burst should be sent if there are
         # bursts left in the decoy sequence
+        self.startTalkieBurst()
         pad_target = self.getCurrentBurstPaddingTarget()
         if pad_target > 0:
-            if not self._active:
+            if self.weAreClient:
                 self._sendFakeBurst(pad_target)
         else:
             self.onEndPadding()
+
+    def onEndPadding(self):
+        # on conclusion of tail-padding, signal to the crawler that the
+        #   trace is over by severing it's connection to the WT listener
+        if self.weAreClient:
+            self._listener.closeCrawler()
+        super(WalkieTalkieTransport, self).onEndPadding()
 
     def sendIgnore(self, paddingLength=None):
         """Overwrite sendIgnore (sendPadding) function so
@@ -369,12 +383,17 @@ class WalkieTalkieListener(object):
         def dataReceived(self, data):
             if data:
                 command = struct.unpack("<i", data[:4])[0]
+                log.debug('[wt-listener]: received opcode {}'.format(command))
                 if command == const.WT_OP_PAGE:
                     log.debug('[wt-listener]: received new webpage session notification from crawler')
                     self._transport.receiveSessionPageId(data[4:].decode())
                 elif command == const.WT_OP_TALKIE_START:
                     log.debug('[wt-listener]: received talkie start notification from browser')
                     self._transport.startTalkieBurst()
+                elif command == const.WT_OP_SESSION_ENDS:
+                    log.debug('[wt-listener]: received session end notification from crawler')
+                    self._factory._listener.setCrawler(self)
+                    self._transport.onSessionEnds(1)
 
     class _ServerFactory(Factory):
         """Builds protocols for handling incoming connections to WT listener"""
@@ -395,9 +414,13 @@ class WalkieTalkieListener(object):
     def listen(self):
         try:
             d = self._ep.listen(self._ServerFactory(self))
-            d.addCallback(lambda a: self.setCrawler(a))
+            #d.addCallback(lambda a: self.setCrawler(a))
         except Exception, e:
             log.exception("[wt-listener - %s] Error when listening on port %d:", self._transport.end, self._port, e)
 
-    def setCrawler(self, obj):
-        self._crawler = obj
+    def setCrawler(self, connection):
+        self._crawler = connection
+
+    def closeCrawler(self):
+        if self._crawler:
+            self._crawler.transport.loseConnection()
