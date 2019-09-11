@@ -337,7 +337,7 @@ class PaddingPrimitivesInterface(object):
 
     def relayEndBurst(self):
         try:
-            self.whenFakeBurstEnds()
+            self.whenBurstEnds()
         except Exception, e:
             log.exception("[primitives] failed to signal to child transport that a fake burst has ended.")
 
