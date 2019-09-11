@@ -22,6 +22,7 @@ import struct
 
 log = logging.get_obfslogger()
 
+DELAY_TIME = 1000
 
 class WalkieTalkieTransport(WFPadTransport):
     """Implementation of the Walkie-Talkie countermeasure.
@@ -194,7 +195,7 @@ class WalkieTalkieTransport(WFPadTransport):
             self.onEndPadding()
 
         #delay = self._burstTimeoutHisto.randomSample()
-        delay = 1
+        delay = DELAY_TIME
         if not self._deferData or (self._deferData and self._deferData.called):
             self._deferData = deferLater(delay, self.flushBuffer)
 
@@ -353,7 +354,7 @@ class WalkieTalkieTransport(WFPadTransport):
 
         # Draw delay for data message
         #delay = self._burstTimeoutHisto.randomSample()
-        delay = 1
+        delay = DELAY_TIME
 
         # Update delay according to elapsed time since last message
         # was sent. In case elapsed time is greater than current
