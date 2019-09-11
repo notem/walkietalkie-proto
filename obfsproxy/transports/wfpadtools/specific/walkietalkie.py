@@ -11,10 +11,12 @@ import time
 import obfsproxy.common.log as logging
 from obfsproxy.transports.wfpadtools import histo
 from obfsproxy.transports.wfpadtools.common import deferLater
+from obfsproxy.transports.wfpadtools.session import Session
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint
+
 
 import struct
 
@@ -184,14 +186,15 @@ class WalkieTalkieTransport(WFPadTransport):
         sending the next padding burst"""
         self._pad_count = 0
         self._active = True
-        log.info('[walkietalkie - %s] ready to send next fake burst.', self.end)
+        log.info('[walkietalkie - %s] ready to send next burst.', self.end)
 
         pad_target = self.getBurstTarget()
         if pad_target <= 0 and self.session.is_padding:
             log.debug("[walkietalkie - %s] no more bursts left in decoy!", self.end)
             self.onEndPadding()
 
-        delay = self._burstTimeoutHisto.randomSample()
+        #delay = self._burstTimeoutHisto.randomSample()
+        delay = 1
         if not self._deferData or (self._deferData and self._deferData.called):
             self._deferData = deferLater(delay, self.flushBuffer)
 
@@ -349,7 +352,8 @@ class WalkieTalkieTransport(WFPadTransport):
         #deferBurstCancelled, deferGapCancelled = self.cancelDeferrers('snd')
 
         # Draw delay for data message
-        delay = self._burstTimeoutHisto.randomSample()
+        #delay = self._burstTimeoutHisto.randomSample()
+        delay = 1
 
         # Update delay according to elapsed time since last message
         # was sent. In case elapsed time is greater than current
@@ -427,6 +431,29 @@ class WalkieTalkieTransport(WFPadTransport):
 
     ##            self._pad_count += 1
     ##            log.debug("[walkie-talkie - %s] sent burst padding. running count = %d", self.end, self._pad_count)
+
+    def onSessionStarts(self, sessId):
+        """Sens hint for session start.
+
+        To be extended at child classes that implement final website
+        fingerprinting countermeasures.
+        """
+        self.session = Session()
+        if self.weAreClient:
+            self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), True])
+        else:
+            self._sessId = sessId
+        self._visiting = True
+
+        # We defer flush of buffer
+        # Since flush is likely to be empty because we just started the session,
+        # we will start padding.
+        #delay = self._delayDataProbdist.randomSample()
+        #if not self._deferData or (self._deferData and self._deferData.called):
+        #    self._deferData = deferLater(delay, self.flushBuffer)
+        #    log.debug("[walkietalkie - %s] Delay buffer flush %s ms delay", self.end, delay)
+
+        log.info("[walkietalkie - %s] - Session has started!(sessid = %s)", self.end, sessId)
 
 
 class WalkieTalkieClient(WalkieTalkieTransport):

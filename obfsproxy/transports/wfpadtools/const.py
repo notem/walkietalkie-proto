@@ -85,6 +85,7 @@ ARGS_POS                = 8
 # Length of WFPad's MTU in bytes.  Note that this is *not* the link MTU
 # which is probably 1500 (we substract 52 bytes = TCP (32B) + IP (20B) headers)
 TOR_CELL_SIZE           = 512
+MTU                     = 1448
 MSS                     = 1460
 PSIZE                   = 600
 
@@ -94,9 +95,8 @@ CTRL_FIELDS_LEN         = CONTROL_LEN + ARGS_TOTAL_LENGTH_LEN
 HDR_CTRL_LEN            = MIN_HDR_LEN + CTRL_FIELDS_LEN
 
 # Maximum payload unit of a WFPad message in bytes
-MPU                     = TOR_CELL_SIZE
-MPU_CTRL                = MPU
-MTU                     = MPU + HDR_CTRL_LEN
+MPU                     = MTU - MIN_HDR_LEN
+MPU_CTRL                = MTU - HDR_CTRL_LEN
 
 # Max delay
 MAX_DELAY               = 262144
