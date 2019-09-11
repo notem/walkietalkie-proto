@@ -303,7 +303,7 @@ class WalkieTalkieTransport(WFPadTransport):
                 payloadLen = const.MPU if dataLen > const.MPU else dataLen
             msgTotalLen = payloadLen + const.MIN_HDR_LEN
 
-            payload_counts = dataLen // payloadLen
+            payload_counts = (dataLen // payloadLen) + 1 if dataLen > 0 else 0
 
             # send packets with real payloads
             for i in range(payload_counts):
