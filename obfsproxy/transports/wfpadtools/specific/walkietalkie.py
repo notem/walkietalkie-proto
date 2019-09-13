@@ -405,9 +405,9 @@ class WalkieTalkieTransport(WFPadTransport):
         """The communication session with the target server has ended.
         Fake bursts must be sent if there remains bursts in the decoy sequence.
         """
-        if len(self._buffer) > 0:  # don't end the session until the buffer is empty
-            reactor.callLater(0.5, self.onSessionEnds, sessId)
-            return
+        #if len(self._buffer) > 0:  # don't end the session until the buffer is empty
+        #    reactor.callLater(0.5, self.onSessionEnds, sessId)
+        #    return
 
         self.session.is_padding = True
         self._visiting = False
