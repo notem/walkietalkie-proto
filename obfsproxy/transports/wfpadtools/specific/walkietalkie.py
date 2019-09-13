@@ -22,8 +22,8 @@ import struct
 
 log = logging.get_obfslogger()
 
-RELAY_DELAY_TIME = 100     # 99th percentile of IBAT for Wang's HD data is 80ms
-CLIENT_DELAY_TIME = 5      # 99th percentile of IBAT for Wang's HD data is 4ms
+RELAY_DELAY_TIME = 300     # 99th percentile of IBAT for Wang's HD data is 80ms
+CLIENT_DELAY_TIME = 300     # 99th percentile of IBAT for Wang's HD data is 4ms
 
 class WalkieTalkieTransport(WFPadTransport):
     """Implementation of the Walkie-Talkie countermeasure.
@@ -196,9 +196,9 @@ class WalkieTalkieTransport(WFPadTransport):
             self.onEndPadding()
 
         if self.weAreClient:
-            delay = CLIENT_DELAY_TIME
+            delay = CLIENT_DELAY_TIME * 10
         else:
-            delay = RELAY_DELAY_TIME
+            delay = RELAY_DELAY_TIME * 10
         if not self._deferData or (self._deferData and self._deferData.called):
             self._deferData = deferLater(delay, self.flushBuffer)
 
