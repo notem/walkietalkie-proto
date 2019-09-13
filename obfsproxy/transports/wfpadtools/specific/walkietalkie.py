@@ -123,7 +123,7 @@ class WalkieTalkieTransport(WFPadTransport):
         if self.weAreClient:
             log.debug("[walkietalkie - %s] relaying session url to bridge", self.end)
             self.sendControlMessage(const.OP_WT_PAGE_ID, [id])
-        self._decoy_sequence = [(10, 10) for _ in range(30)]
+        #self._decoy_sequence = [(10, 10) for _ in range(30)]
 
     def _setPadSequence(self, id):
         """Load the burst sequence and decoy burst sequence for a particular webpage
@@ -415,7 +415,7 @@ class WalkieTalkieTransport(WFPadTransport):
         log.info("[walkietalkie - %s] - Session has ended! (sessid = %s)", self.end, sessId)
         if self.weAreClient and self.circuit:
             self.session.is_peer_padding = True
-            self.queue_session_end_notification = True
+            self._queue_session_end_notification = True
             #self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False])
         self.session.totalPadding = self.calculateTotalPadding(self)
 
