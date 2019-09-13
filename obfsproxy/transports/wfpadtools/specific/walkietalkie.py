@@ -36,7 +36,7 @@ class WalkieTalkieTransport(WFPadTransport):
         super(WalkieTalkieTransport, self).__init__()
 
         self._decoy_directory = const.WT_DECOY_DIR if "DECOY_DIR" not in os.environ else os.environ["DECOY_DIR"]
-        self._decoy_sequence = []
+        self._decoy_sequence = []#[10 for _ in range(20)]
 
         # Set constant length for messages
         self._length = const.MPU
@@ -100,6 +100,7 @@ class WalkieTalkieTransport(WFPadTransport):
         self._burst_count = 0
         self._pad_count = 0
         self._packets_seen = 0
+        self._queue_session_end_notification = False
 
         # next packet should notify server of WT burst start
         #self._notify_bridge = False
@@ -122,6 +123,7 @@ class WalkieTalkieTransport(WFPadTransport):
         if self.weAreClient:
             log.debug("[walkietalkie - %s] relaying session url to bridge", self.end)
             self.sendControlMessage(const.OP_WT_PAGE_ID, [id])
+        self._decoy_sequence = [(10, 10) for _ in range(30)]
 
     def _setPadSequence(self, id):
         """Load the burst sequence and decoy burst sequence for a particular webpage
@@ -199,8 +201,10 @@ class WalkieTalkieTransport(WFPadTransport):
             delay = CLIENT_DELAY_TIME * 10
         else:
             delay = RELAY_DELAY_TIME * 10
-        if not self._deferData or (self._deferData and self._deferData.called):
-            self._deferData = deferLater(delay, self.flushBuffer)
+        #if not self._deferData or (self._deferData and self._deferData.called):
+        if self._deferData and self._deferData.called:
+            self._deferData.cancel()
+        self._deferData = deferLater(delay, self.flushBuffer)
 
     #def _sendFakeBurst(self, pad_target):
     #    """Send a burst of dummy packets.
@@ -324,8 +328,14 @@ class WalkieTalkieTransport(WFPadTransport):
 
                 log.debug("[walkietalkie - %s] Sent data message of length %d.", self.end, msgTotalLen)
 
+            # send session end notification if applicable
+            if self._queue_session_end_notification:
+                self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False])
+                payload_counts += 1  # SESSION END control message
+                self._queue_session_end_notification = False
+
             # send packets with dummy payloads
-            payload_counts += 1
+            payload_counts += 1  # BURST END control message
             self.session.consecPaddingMsgs = 0
             for j in range(self.getBurstTarget() - payload_counts):
                 self.sendIgnore()
@@ -405,13 +415,14 @@ class WalkieTalkieTransport(WFPadTransport):
         log.info("[walkietalkie - %s] - Session has ended! (sessid = %s)", self.end, sessId)
         if self.weAreClient and self.circuit:
             self.session.is_peer_padding = True
-            self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False])
+            self.queue_session_end_notification = True
+            #self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False])
         self.session.totalPadding = self.calculateTotalPadding(self)
 
         # the PT should be in Walkie mode if the previous burst was incoming
         # in such a case, the new outgoing (fake) burst should be sent if there are
         # bursts left in the decoy sequence
-        self.whenBurstEnds()
+        #self.whenBurstEnds()
 
     def onEndPadding(self):
         # on conclusion of tail-padding, signal to the crawler that the
