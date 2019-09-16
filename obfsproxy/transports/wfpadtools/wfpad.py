@@ -193,8 +193,8 @@ class WFPadTransport(BaseTransport, PaddingPrimitivesInterface):
         log.debug("[wfpad - %s] Connected with the other WFPad end.", self.end)
 
         # Once we are connected we can flush data accumulated in the buffer.
-        if len(self._buffer) > 0:
-            self.flushBuffer()
+        #if len(self._buffer) > 0:
+        #    self.flushBuffer()
 
         # Get peer address
         host = self.circuit.downstream.transport.getHost()

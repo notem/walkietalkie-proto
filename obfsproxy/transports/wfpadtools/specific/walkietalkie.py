@@ -22,8 +22,8 @@ import struct
 
 log = logging.get_obfslogger()
 
-RELAY_DELAY_TIME = 300     # 99th percentile of IBAT for Wang's HD data is 80ms
-CLIENT_DELAY_TIME = 300     # 99th percentile of IBAT for Wang's HD data is 4ms
+RELAY_DELAY_TIME = 1000     # 99th percentile of IBAT for Wang's HD data is 80ms
+CLIENT_DELAY_TIME = 1000     # 99th percentile of IBAT for Wang's HD data is 4ms
 
 class WalkieTalkieTransport(WFPadTransport):
     """Implementation of the Walkie-Talkie countermeasure.
@@ -43,6 +43,8 @@ class WalkieTalkieTransport(WFPadTransport):
         self._lengthDataProbdist = histo.uniform(self._length)
 
         self._burstTimeoutHisto = histo.uniform(0.5)
+
+        self._time_of_last_pkt = 0
 
         # Start listening for URL signals
         self._port = const.WT_PORT
@@ -101,6 +103,7 @@ class WalkieTalkieTransport(WFPadTransport):
         self._pad_count = 0
         self._packets_seen = 0
         self._queue_session_end_notification = False
+        self._queue_session_start_notification = False
 
         # next packet should notify server of WT burst start
         #self._notify_bridge = False
@@ -183,6 +186,19 @@ class WalkieTalkieTransport(WFPadTransport):
     #            self._notify_bridge = True
     #        else:
     #            self._active = False
+    def checkTimeout(self):
+        return CLIENT_DELAY_TIME if self.weAreClient() else RELAY_DELAY_TIME < int(time.time()*1000) - self._time_of_last_pkt
+
+    def updateTimeout(self):
+        self._time_of_last_pkt = int(time.time() * 1000)
+
+    def whenReceivedUpstream(self, data):
+        """Template method for child WF defense transport."""
+        self.updateTimeout()
+
+    def whenReceivedDownstream(self, data):
+        """Template method for child WF defense transport."""
+        self.updateTimeout()
 
     def whenBurstEnds(self):
         """BurstEnd packets are sent by the cooperating node during tail-padding
@@ -299,6 +315,14 @@ class WalkieTalkieTransport(WFPadTransport):
         # only consider flushing buffer if in talkie-mode
         # !! one side of PT must always be talkie-mode else connection will hang
         if self._active:
+            if not self.checkTimeout():
+                delay = (CLIENT_DELAY_TIME if self.weAreClient() else RELAY_DELAY_TIME) - ((time.time()*1000) - self._time_of_last_pkt)
+                if len(self._buffer) <= 0:
+                    delay *= 10
+                if self._deferData and self._deferData.called:
+                    self._deferData.cancel()
+                self._deferData = deferLater(delay, self.flushBuffer)
+
             dataLen = len(self._buffer)
 
             log.debug("[walkietalkie - %s] %s bytes of data found in buffer."
@@ -333,6 +357,10 @@ class WalkieTalkieTransport(WFPadTransport):
                 self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False])
                 payload_counts += 1  # SESSION END control message
                 self._queue_session_end_notification = False
+            if self._queue_session_start_notification:
+                self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), True])
+                payload_counts += 1  # SESSION END control message
+                self._queue_session_start_notification = False
 
             # send packets with dummy payloads
             payload_counts += 1  # BURST END control message
@@ -390,15 +418,13 @@ class WalkieTalkieTransport(WFPadTransport):
         self._buffer.write(data)
         log.debug("[walkietalkie - %s] Buffered %d bytes of outgoing data w/ delay %sms", self.end, len(self._buffer), delay)
 
-        # In case there is no scheduled flush of the buffer,
-        # make a delayed call to the flushing method.
-        if not self._deferData or (self._deferData and self._deferData.called):
-            self._deferData = deferLater(delay, self.flushBuffer)
-        else:
-            # if there is a scheduled flush buffer, cancel and re-schedule
-            if self._deferData and self._deferData.called:
-                self._deferData.cancel()
-            self._deferData = deferLater(delay, self.flushBuffer)
+        if len(self._buffer) <= 0:
+            delay *= 10
+
+        # if there is a scheduled flush buffer, cancel and re-schedule
+        if self._deferData and self._deferData.called:
+            self._deferData.cancel()
+        self._deferData = deferLater(delay, self.flushBuffer)
         log.debug("[walkietalkie - %s] Delay buffer flush %s ms delay", self.end, delay)
 
     def onSessionEnds(self, sessId):
@@ -458,7 +484,8 @@ class WalkieTalkieTransport(WFPadTransport):
         """
         self.session = Session()
         if self.weAreClient:
-            self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), True])
+            self._queue_session_start_notification = True
+            #self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), True])
         else:
             self._sessId = sessId
         self._visiting = True
