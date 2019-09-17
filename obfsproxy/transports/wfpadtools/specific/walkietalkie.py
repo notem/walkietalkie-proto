@@ -22,8 +22,8 @@ import struct
 
 log = logging.get_obfslogger()
 
-RELAY_DELAY_TIME = 1000     # 99th percentile of IBAT for Wang's HD data is 80ms
-CLIENT_DELAY_TIME = 1000     # 99th percentile of IBAT for Wang's HD data is 4ms
+RELAY_DELAY_TIME = 300     # 99th percentile of IBAT for Wang's HD data is 80ms
+CLIENT_DELAY_TIME = 300     # 99th percentile of IBAT for Wang's HD data is 4ms
 
 class WalkieTalkieTransport(WFPadTransport):
     """Implementation of the Walkie-Talkie countermeasure.
@@ -104,6 +104,7 @@ class WalkieTalkieTransport(WFPadTransport):
         self._packets_seen = 0
         self._queue_session_end_notification = False
         self._queue_session_start_notification = False
+        self.flushbuf_id = 0
 
         # next packet should notify server of WT burst start
         #self._notify_bridge = False
@@ -220,7 +221,8 @@ class WalkieTalkieTransport(WFPadTransport):
         #if not self._deferData or (self._deferData and self._deferData.called):
         if self._deferData and self._deferData.called:
             self._deferData.cancel()
-        self._deferData = deferLater(delay, self.flushBuffer)
+        self._deferData = deferLater(delay, self.flushBuffer, id=self.flushbuf_id+1)
+        self.flushbuf_id += 1
 
     #def _sendFakeBurst(self, pad_target):
     #    """Send a burst of dummy packets.
@@ -307,21 +309,21 @@ class WalkieTalkieTransport(WFPadTransport):
     ##    log.debug("[walkie-talkie - %s] data waiting in buffer, flushing again "
     ##              "after delay of %s ms.", self.end, dataDelay)
 
-    def flushBuffer(self):
+    def flushBuffer(self, id):
         """Overwrite WFPadTransport flushBuffer so as to behave in half-duplex mode
 
         Flush buffer only when new upstream packets have not been received for some time and the PT is in talkie mode
         """
         # only consider flushing buffer if in talkie-mode
         # !! one side of PT must always be talkie-mode else connection will hang
-        if self._active:
-            if not self.checkTimeout():
-                delay = (CLIENT_DELAY_TIME if self.weAreClient() else RELAY_DELAY_TIME) - ((time.time()*1000) - self._time_of_last_pkt)
-                if len(self._buffer) <= 0:
-                    delay *= 10
-                if self._deferData and self._deferData.called:
-                    self._deferData.cancel()
-                self._deferData = deferLater(delay, self.flushBuffer)
+        if self._active and id==self.flushbuf_id:
+            #if not self.checkTimeout():
+            #    delay = CLIENT_DELAY_TIME if self.weAreClient() else RELAY_DELAY_TIME
+            #    if len(self._buffer) <= 0:
+            #        delay *= 10
+            #    log.debug("flush buffer called too soon, delaying again")
+            #    self._deferData = deferLater(delay, self.flushBuffer)
+            #    return
 
             dataLen = len(self._buffer)
 
@@ -388,6 +390,9 @@ class WalkieTalkieTransport(WFPadTransport):
         """Overwrite WFPadTransport pushData to schedule flushBuffer based on custom timings.
         """
         log.debug("[walkietalkie - %s] Pushing %d bytes of outgoing data.", self.end, len(data))
+        if len(data) <= 0:
+            log.debug("[walkietalkie - %s] pushData() was called without a reason!", self.end)
+            return
 
         # Cancel existing deferred calls to padding methods to prevent
         # callbacks that remove tokens from histograms
@@ -418,13 +423,11 @@ class WalkieTalkieTransport(WFPadTransport):
         self._buffer.write(data)
         log.debug("[walkietalkie - %s] Buffered %d bytes of outgoing data w/ delay %sms", self.end, len(self._buffer), delay)
 
-        if len(self._buffer) <= 0:
-            delay *= 10
-
         # if there is a scheduled flush buffer, cancel and re-schedule
         if self._deferData and self._deferData.called:
             self._deferData.cancel()
-        self._deferData = deferLater(delay, self.flushBuffer)
+        self._deferData = deferLater(delay, self.flushBuffer, id=self.flushbuf_id+1)
+        self.flushbuf_id += 1
         log.debug("[walkietalkie - %s] Delay buffer flush %s ms delay", self.end, delay)
 
     def onSessionEnds(self, sessId):
@@ -500,6 +503,70 @@ class WalkieTalkieTransport(WFPadTransport):
 
         log.info("[walkietalkie - %s] - Session has started!(sessid = %s)", self.end, sessId)
 
+    def processMessages(self, data):
+        """Extract WFPad protocol messages.
+
+        Data is written to the local application and padding messages are
+        filtered out.
+        """
+        log.debug("[walkietalkie - %s] Parse protocol messages from stream.", self.end)
+
+        # Make sure there actually is data to be parsed
+        if (data is None) or (len(data) == 0):
+            return None
+
+        # Try to extract protocol messages
+        msgs = []
+        try:
+            msgs = self._msgExtractor.extract(data)
+        except Exception, e:
+            log.exception("[walkietalkie - %s] Exception extracting "
+                          "messages from stream: %s", self.end, str(e))
+
+        self.session.lastRcvDownstreamTs = time.time()
+        direction = const.IN if self.weAreClient else const.OUT
+        for msg in msgs:
+            log.debug("[walkietalkie - %s] A new message has been parsed!", self.end)
+            msg.rcvTime = time.time()
+
+            if msg.flags & const.FLAG_CONTROL:
+                # Process control messages
+                payload = msg.payload
+                if len(payload) > 0:
+                    self.circuit.upstream.write(payload)
+                log.debug("[walkietalkie - %s] Control flag detected, processing opcode %d.", self.end, msg.opcode)
+                self.receiveControlMessage(msg.opcode, msg.args)
+                self.session.history.append(
+                    (time.time(), const.FLAG_CONTROL, direction, msg.totalLen, len(msg.payload)))
+
+            #self.deferBurstPadding('rcv')
+            #self.session.numMessages['rcv'] += 1
+            #self.session.totalBytes['rcv'] += msg.totalLen
+            #log.debug("total bytes and total len of message: %s" % msg.totalLen)
+
+            # Filter padding messages out.
+            if msg.flags & const.FLAG_PADDING:
+                log.debug("[walkietalkie - %s] Padding message ignored.", self.end)
+
+                self.session.history.append(
+                    (time.time(), const.FLAG_PADDING, direction, msg.totalLen, len(msg.payload)))
+
+            # Forward data to the application.
+            elif msg.flags & const.FLAG_DATA:
+                log.debug("[walkietalkie - %s] Data flag detected, relaying upstream", self.end)
+                self.session.dataBytes['rcv'] += len(msg.payload)
+                self.session.dataMessages['rcv'] += 1
+
+                self.circuit.upstream.write(msg.payload)
+
+                self.session.lastRcvDataDownstreamTs = time.time()
+                self.session.history.append(
+                    (time.time(), const.FLAG_DATA, direction, msg.totalLen, len(msg.payload)))
+
+            # Otherwise, flag not recognized
+            else:
+                log.error("[walkietalkie - %s] Invalid message flags: %d.", self.end, msg.flags)
+        return msgs
 
 class WalkieTalkieClient(WalkieTalkieTransport):
     """Extend the TamarawTransport class."""
