@@ -337,9 +337,14 @@ class WalkieTalkieTransport(WFPadTransport):
             msgTotalLen = payloadLen + const.MIN_HDR_LEN
 
             payload_counts = (dataLen // payloadLen) + 1 if dataLen > 0 else 0
+            burst_target = self.getBurstTarget() - 1
+            if self._queue_session_start_notification:
+                burst_target -= 1
+            if self._queue_session_end_notification:
+                burst_target -= 1
 
             # send packets with real payloads
-            for i in range(payload_counts):
+            for i in range(min(payload_counts, burst_target)):
                 # If data in buffer fills the specified length, we just
                 # encapsulate and send the message.
                 if len(self._buffer) > payloadLen:
@@ -356,20 +361,20 @@ class WalkieTalkieTransport(WFPadTransport):
 
             # send session end notification if applicable
             if self._queue_session_end_notification:
-                self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False])
+                self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), False, "session end notification!"])
                 payload_counts += 1  # SESSION END control message
                 self._queue_session_end_notification = False
             if self._queue_session_start_notification:
-                self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), True])
+                self.sendControlMessage(const.OP_APP_HINT, [self.getSessId(), True, "session start notification!"])
                 payload_counts += 1  # SESSION END control message
                 self._queue_session_start_notification = False
 
             # send packets with dummy payloads
             payload_counts += 1  # BURST END control message
             self.session.consecPaddingMsgs = 0
-            for j in range(self.getBurstTarget() - payload_counts):
+            for j in range(burst_target - payload_counts):
                 self.sendIgnore()
-            self.sendControlMessage(const.OP_WT_BURST_END, [])
+            self.sendControlMessage(const.OP_WT_BURST_END, "burst end notification!")
 
             # set to walkie-mode and iterate burst counter
             self._active = False
